@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Huishouden">
+  <rect width="512" height="512" rx="112" fill="#176b5b"/>
+  <path d="M116 238 256 126l140 112v146a34 34 0 0 1-34 34H150a34 34 0 0 1-34-34V238Z" fill="#f8f8f3"/>
+  <path d="M192 418V280h128v138" fill="#dff1ea"/>
+  <path d="M228 334c17-23 39-35 66-35 21 0 39 7 54 21-8 45-37 74-87 86-22-19-33-43-33-72Z" fill="#50b88f"/>
+  <path d="M268 374c15-25 35-44 60-57" fill="none" stroke="#145548" stroke-linecap="round" stroke-width="18"/>
+  <circle cx="193" cy="247" r="22" fill="#f2a363"/>
+</svg>
