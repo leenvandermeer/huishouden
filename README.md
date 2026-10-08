@@ -30,4 +30,6 @@ Zie de [installatie- en beheerhandleiding](docs/installatie-en-beheer.md) voor d
 
 Voer vóór iedere release `npm run release:check` uit. Commit de wijzigingen, push ze naar `origin/main` en deploy met `bash scripts/deploy-remote.sh --confirm-production`. De server haalt de gecontroleerde Git-commit op. Controleer daarna de live applicatie met `bash scripts/validate-production.sh` op de server.
 
-Meer informatie staat in de [ontwikkelprocedure](docs/development-workflow.md), de [handleiding voor back-up en herstel](docs/back-up-en-herstel.md) en het [financiële rekencontract](docs/financieel-rekencontract-v1.md).
+Meer informatie staat in de [business requirements](docs/business-requirements.md), de [handleiding voor back-up en herstel](docs/back-up-en-herstel.md) en het [financiële rekencontract](docs/financieel-rekencontract-v1.md).
+
+De [documentatie-index](docs/README.md) verwijst naar de gebruikershandleiding, architectuur, veiligheid en alle productafspraken.

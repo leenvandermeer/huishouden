@@ -1,6 +1,6 @@
 export const PRODUCT_NAME = "Huishouden";
-export const PRODUCT_EXPERIENCE = "Ruimte";
-export const PRODUCT_RELEASE = "ruimte-2026.09";
+export const PRODUCT_EXPERIENCE = "Huishoudboekje";
+export const PRODUCT_RELEASE = "huishouden-2026.10";
 
 export const LEGACY_ROUTE_REDIRECTS = [
   { source: "/dashboard.", destination: "/dashboard" },

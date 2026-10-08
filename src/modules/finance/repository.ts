@@ -264,10 +264,6 @@ export interface AccountAlias {
   label?: string;
 }
 
-const defaultSavingsPotNamesByAccount = new Map<string, string[]>([
-  ["NL93RABO1012731537", ["Vrij Spaargeld", "Benzine", "Weekgeld per Maand", "Nicky Spaarpot", "Nicky sporten", "Lotte kinderbijslag"]],
-]);
-
 export interface AuditLogEntry {
   id: string;
   actorUserId?: string;
@@ -2364,27 +2360,14 @@ export async function syncSavingsPotsFromTransactions() {
 }
 
 async function syncSavingsPotsFromTransactionsWithClient(client: PoolClient) {
-  await ensureDefaultSavingsPots(client);
-
   const result = await client.query<{ synced: number }>(
-    `with primary_savings_account as (
-       select id
-       from accounts
-       where type = 'spaarrekening'
-         and archived_at is null
-       order by case when upper(regexp_replace(iban, '\s', '', 'g')) = 'NL93RABO1012731537' then 0 else 1 end, name
-       limit 1
-     ),
-     pot_transactions as (
+    `with pot_transactions as (
        select
          savings_account.id as account_id,
          case
            when lower(extracted.pot_name) = 'bezine' then 'Benzine'
            when lower(extracted.pot_name) = 'vrij spaargeld' then 'Vrij Spaargeld'
            when lower(extracted.pot_name) = 'weekgeld per maand' then 'Weekgeld per Maand'
-           when lower(extracted.pot_name) = 'nicky spaarpot' then 'Nicky Spaarpot'
-           when lower(extracted.pot_name) = 'nicky sporten' then 'Nicky sporten'
-           when lower(extracted.pot_name) = 'lotte kinderbijslag' then 'Lotte kinderbijslag'
            else extracted.pot_name
          end as pot_name,
          to_char(t.booked_at, 'YYYY-MM') as month,
@@ -2513,31 +2496,6 @@ async function deduplicateSavingsPots(client: PoolClient) {
      where pots.id = ranked.id
        and ranked.id <> ranked.keep_id`,
   );
-}
-
-async function ensureDefaultSavingsPots(client: PoolClient) {
-  const result = await client.query<{ id: string; iban: string }>(
-    `select id, iban
-     from accounts
-     where type = 'spaarrekening'
-       and archived_at is null`,
-  );
-
-  for (const account of result.rows) {
-    const potNames = defaultSavingsPotNamesByAccount.get(normalizeAccountAlias(account.iban));
-    if (!potNames) continue;
-
-    for (const name of potNames) {
-      await client.query(
-        `insert into pots (id, account_id, name, target_amount, current_amount, target_date, monthly_reservation)
-         values ($1, $2, $3, null, null, null, null)
-         on conflict (id) do update
-         set account_id = excluded.account_id,
-             name = excluded.name`,
-        [stableId("pot", `${account.id}|${name.toLowerCase()}`), account.id, name],
-      );
-    }
-  }
 }
 
 export async function getFixedExpensesFromDatabase(): Promise<FixedExpense[]> {
@@ -3675,14 +3633,15 @@ async function classifyKnownNamedInternalTransfers(client: PoolClient) {
          ('vakantie'),
          ('benzine'),
          ('kleding'),
-         ('rijbewijslotte'),
-         ('nickyspaarpot'),
-         ('nickysporten'),
-         ('lottekinderbijslag'),
          ('huiswntuin'),
          ('vrijtebesteden'),
          ('hypotheek'),
          ('kinderbijslag')
+       union
+       select regexp_replace(lower(p.name), '[^a-z0-9]', '', 'g')
+       from pots p
+       join accounts a on a.id = p.account_id
+       where a.type = 'spaarrekening' and a.archived_at is null
      ),
      candidates as (
        select

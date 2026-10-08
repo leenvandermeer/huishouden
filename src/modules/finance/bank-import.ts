@@ -87,7 +87,7 @@ const categoryRules: Array<{ categoryId: string; kind: TransactionKind; patterns
   { categoryId: "wonen", kind: "vaste_last", patterns: ["hypotheek", "huur", "vve", "woon"] },
   { categoryId: "verzekeringen", kind: "vaste_last", patterns: ["verzekering", "zorgverzekeraar", "interpolis", "a.s.r", "centraal beheer"] },
   { categoryId: "bankkosten", kind: "vaste_last", patterns: ["rabo standaard", "rabo comfort", "rabo totaalpakket", "rabo directpakket", "betaalpas", "wereldpas", "kaartnummer", "bankkosten"] },
-  { categoryId: "parkeren", kind: "variabele_uitgave", patterns: ["q-park", "parkeren", "vakantiepark de heigraaf"] },
+  { categoryId: "parkeren", kind: "variabele_uitgave", patterns: ["q-park", "parkeren"] },
   { categoryId: "vervoer", kind: "variabele_uitgave", patterns: ["shell", "bp ", "esso", "tank", "ns ", "ovpay"] },
   { categoryId: "vakantie", kind: "reservering", patterns: ["vakantie"] },
   { categoryId: "sparen", kind: "reservering", patterns: ["spaar", "reservering"] },
@@ -350,13 +350,12 @@ function inferCategory(counterparty: string, description: string, amount: number
 }
 
 function knownSavingsAccounts() {
-  const configured = process.env.RABOBANK_SAVINGS_IBANS?.trim() || "NL93RABO1012731537";
-  return new Set(configured.split(":").map(normalizeAccount));
+  const configured = process.env.RABOBANK_SAVINGS_IBANS?.trim() || "";
+  return new Set(configured.split(":").map(normalizeAccount).filter(Boolean));
 }
 
 function defaultAccountLabel(account: string, sourceBank: string) {
   const normalized = normalizeAccount(account);
-  if (normalized === "NL93RABO1012731537") return "Rabo DoelSparen";
   if (knownSavingsAccounts().has(normalized)) return `Spaarrekening ${account.slice(-4)}`;
   return `${sourceBank} ${account.slice(-4)}`;
 }

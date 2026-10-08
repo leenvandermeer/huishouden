@@ -36,8 +36,6 @@ export interface MarketRule {
 }
 
 export const marketMappingRules: MarketRule[] = [
-  rule("Vdmeer Consultancy", "inkomsten-onderneming", "inkomen"),
-  rule("STICHTING TIMON", "salaris", "inkomen"),
   rule("Sociale Verzekeringsbank", "uitkering-toeslagen", "inkomen"),
   rule("Belastingdienst", "belasting", "vaste_last"),
   rule("BELASTINGDIENST", "belasting", "vaste_last"),
@@ -66,12 +64,10 @@ export const marketMappingRules: MarketRule[] = [
   rule("Tango", "brandstof", "variabele_uitgave"),
   rule("Q-Park", "parkeren", "variabele_uitgave"),
   rule("Parking", "parkeren", "variabele_uitgave"),
-  rule("Ticket for Ticket System Vakantiepark De Heigraaf", "parkeren", "variabele_uitgave"),
   rule("NS ", "openbaar-vervoer", "variabele_uitgave"),
   rule("OVPAY", "openbaar-vervoer", "variabele_uitgave"),
   rule("Profile Gouda", "auto-onderhoud", "variabele_uitgave"),
   rule("Rijschool", "kinderen-opleiding", "variabele_uitgave"),
-  rule("NL45 RABO 0328 3865 37", "zakgeld", "variabele_uitgave", "counter_account"),
   rule("Decathlon", "kleding-sport", "variabele_uitgave"),
   rule("Daka", "kleding-sport", "variabele_uitgave"),
   rule("New Balance", "kleding-sport", "variabele_uitgave"),

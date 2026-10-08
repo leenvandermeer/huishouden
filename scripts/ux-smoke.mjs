@@ -6,7 +6,8 @@ const email = process.env.UX_TEST_EMAIL;
 const password = process.env.UX_TEST_PASSWORD;
 if (!email || !password) throw new Error("Stel UX_TEST_EMAIL en UX_TEST_PASSWORD in via de omgeving.");
 const outputDir = process.env.UX_TEST_OUTPUT_DIR ?? "/tmp";
-const preferredAccountId = process.env.UX_TEST_ACCOUNT_ID ?? "acct_b100b8541221bcb3a9ef2dfa";
+const preferredAccountId = process.env.UX_TEST_ACCOUNT_ID;
+if (!preferredAccountId) throw new Error("Stel UX_TEST_ACCOUNT_ID in voor je eigen testrekening.");
 const browser = await chromium.launch({ executablePath, headless: true });
 const errors = [];
 

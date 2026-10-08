@@ -5,7 +5,8 @@ const executablePath = process.env.CHROME_BIN ?? "/Applications/Google Chrome.ap
 const email = process.env.UX_TEST_EMAIL;
 const password = process.env.UX_TEST_PASSWORD;
 if (!email || !password) throw new Error("Stel UX_TEST_EMAIL en UX_TEST_PASSWORD in via de omgeving.");
-const accountId = process.env.UX_TEST_ACCOUNT_ID ?? "acct_b100b8541221bcb3a9ef2dfa";
+const accountId = process.env.UX_TEST_ACCOUNT_ID;
+if (!accountId) throw new Error("Stel UX_TEST_ACCOUNT_ID in voor je eigen testrekening.");
 const routes = [
   "/dashboard",
   "/vermogen",

@@ -79,8 +79,8 @@ export function generateTotpSecret(): string {
 }
 
 export function buildTotpUri(secret: string, email: string): string {
-  const issuer = encodeURIComponent(process.env.TOTP_ISSUER ?? "Vdmeer Huishouden");
-  const label = encodeURIComponent(`Vdmeer Huishouden:${email}`);
+  const issuer = encodeURIComponent(process.env.TOTP_ISSUER ?? "Huishouden");
+  const label = `${issuer}:${encodeURIComponent(email)}`;
   return `otpauth://totp/${label}?secret=${encodeURIComponent(secret)}&issuer=${issuer}&algorithm=SHA1&digits=${TOTP_DIGITS}&period=${TOTP_PERIOD_SECONDS}`;
 }
 

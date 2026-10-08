@@ -390,7 +390,7 @@ function normalizeRuleText(value: string) {
 }
 
 function isPersonLikeCounterparty(value: string) {
-  return /\bvan der meer\b/i.test(value) || /^[A-Z]\.?\s*[A-Z]?\.?\s+/.test(value);
+  return /\b(?:van der|van den|de|van)\s+[A-Z][a-z]+/.test(value) || /^[A-Z]\.?\s*[A-Z]?\.?\s+/.test(value);
 }
 
 function counterInfoLabel(transaction: Transaction) {

@@ -40,7 +40,7 @@ veilig te besteden
 
 Alle invoercomponenten worden eerst op eurocenten afgerond. Aftrekposten kunnen niet negatief zijn. De uitkomst mag wel negatief zijn: dat is een echt tekort en wordt niet op nul verborgen.
 
-In versie 1.0.0 ondersteunt de formule bewuste reserveringen, maar Vandaag geeft hiervoor nog `€ 0,00` door. Sparen en beleggen worden niet stilzwijgend als dagelijkse uitgaven behandeld. Een expliciete reserveringsplanning volgt in een later werkpakket.
+In versie 1.0.0 ondersteunt de formule bewuste reserveringen, maar Vandaag geeft hiervoor nog `€ 0,00` door. Sparen en beleggen worden niet stilzwijgend als dagelijkse uitgaven behandeld. Expliciete reserveringsplanning is een uitbreidingswens.
 
 ## Zekerheid en onzekerheidsbuffer
 
@@ -89,44 +89,46 @@ mee te rekenen bedrag = min(resterend maandbudget, verwacht voor periode)
 | Beleggen | `beleggen` | Aparte vermogensstroom | Nee |
 | Interne overboeking | soort `interne_overboeking` | Geen inkomen of uitgave op huishoudniveau | Nee |
 
-Meerdere betalingen van dezelfde structurele bron binnen één maand worden vóór de inkomensschatting opgeteld. Bronnen blijven onderling gescheiden. Daardoor worden Timon en VDMeer Consultancy niet tot één gemiddeld salaris vermengd.
+Meerdere betalingen van dezelfde structurele bron binnen één maand worden vóór de inkomensschatting opgeteld. Bronnen blijven onderling gescheiden. Daardoor worden salaris en ondernemingsinkomen niet tot één gemiddeld salaris vermengd.
 
 ## Voorbeelden
+
+Alle namen, datums en bedragen hieronder zijn fictieve rekenvoorbeelden.
 
 ### 1. Bijna aan het einde van de maand
 
 Gegevens op 21 september 2026:
 
 ```text
-Maandbudgetten gepland                 € 1.780,00
-Deze maand werkelijk uitgegeven         € 946,18
-Onbesteed volgens oude benadering        € 833,82
+Maandbudgetten gepland                 € 1.500,00
+Deze maand werkelijk uitgegeven         € 900,00
+Onbesteed volgens oude benadering        € 600,00
 Dagen tot volgend inkomen                       3
 Dagen in september                             30
-Verwacht vóór inkomen: 1.780 × 3 / 30    € 178,00
+Verwacht vóór inkomen: 1.500 × 3 / 30    € 150,00
 ```
 
-De prognose trekt dus €178,00 af en niet het volledige onbestede bedrag van €833,82.
+De prognose trekt dus €150,00 af en niet het volledige onbestede bedrag van €600,00.
 
 ### 2. Reconciliatie van Vandaag
 
 ```text
-Op betaalrekeningen                     € 684,74
-Vaste lasten vóór inkomen             − € 110,09
-Verwachte uitgaven vóór inkomen       − € 178,00
+Op betaalrekeningen                     € 800,00
+Vaste lasten vóór inkomen             − € 100,00
+Verwachte uitgaven vóór inkomen       − € 150,00
 Bewuste reserveringen                   − € 0,00
 Onzekerheidsbuffer                      − € 0,00
-Veilig te besteden                       € 396,65
+Veilig te besteden                       € 550,00
 ```
 
-De zichtbare onderdelen en de CSV-uitvoer moeten exact op €396,65 uitkomen.
+De zichtbare onderdelen en de CSV-uitvoer moeten exact op €550,00 uitkomen.
 
 ### 3. Meerdere inkomstenbronnen
 
-- Stichting Timon wordt op 24 september verwacht.
-- VDMeer Consultancy wordt rond 30 september verwacht.
+- Werkgever Voorbeeld wordt op 24 september verwacht.
+- Onderneming Voorbeeld wordt rond 30 september verwacht.
 - Op 21 september is 24 september de horizon.
-- Na verwerking van Timon kan VDMeer Consultancy automatisch de eerstvolgende bron worden.
+- Na verwerking van het salaris kan Onderneming Voorbeeld automatisch de eerstvolgende bron worden.
 - Losse incidentele bijschrijvingen, zoals een betaalverzoek, mogen deze volgorde niet overnemen.
 
 ### 4. Vierwekelijks patroon

@@ -9,7 +9,7 @@ set account_id = (
   from accounts
   where type = 'spaarrekening'
     and archived_at is null
-  order by case when upper(regexp_replace(iban, '\s', '', 'g')) = 'NL93RABO1012731537' then 0 else 1 end, name
+  order by name, id
   limit 1
 )
 where account_id is null

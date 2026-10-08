@@ -4,28 +4,28 @@ import { inferRecurringIncomes } from "../src/modules/finance/repository";
 
 test("herkent salaris en ondernemingsinkomen als aparte terugkerende bronnen", () => {
   const rows = [
-    income("t3", "STICHTING TIMON", 2928.39, "2026-08-24", "salaris"),
-    income("t2", "STICHTING TIMON", 2824.35, "2026-07-24", "salaris"),
-    income("t1", "STICHTING TIMON", 3120.06, "2026-06-24", "salaris"),
-    income("v6", "Vdmeer Consultancy", 1000, "2026-08-30", "inkomsten-onderneming"),
-    income("v5", "Vdmeer Consultancy", 750, "2026-08-15", "inkomsten-onderneming"),
-    income("v4", "Vdmeer Consultancy", 250, "2026-08-06", "inkomsten-onderneming"),
-    income("v3", "Vdmeer Consultancy", 8000, "2026-07-28", "inkomsten-onderneming"),
-    income("v2", "Vdmeer Consultancy", 1000, "2026-07-09", "inkomsten-onderneming"),
-    income("v1", "Vdmeer Consultancy", 250, "2026-07-09", "inkomsten-onderneming"),
+    income("t3", "Werkgever Voorbeeld", 2900, "2026-08-24", "salaris"),
+    income("t2", "Werkgever Voorbeeld", 2800, "2026-07-24", "salaris"),
+    income("t1", "Werkgever Voorbeeld", 3100, "2026-06-24", "salaris"),
+    income("v6", "Onderneming Voorbeeld", 1000, "2026-08-30", "inkomsten-onderneming"),
+    income("v5", "Onderneming Voorbeeld", 750, "2026-08-15", "inkomsten-onderneming"),
+    income("v4", "Onderneming Voorbeeld", 250, "2026-08-06", "inkomsten-onderneming"),
+    income("v3", "Onderneming Voorbeeld", 8000, "2026-07-28", "inkomsten-onderneming"),
+    income("v2", "Onderneming Voorbeeld", 1000, "2026-07-09", "inkomsten-onderneming"),
+    income("v1", "Onderneming Voorbeeld", 250, "2026-07-09", "inkomsten-onderneming"),
   ];
 
   const result = inferRecurringIncomes(rows, "2026-09-25");
 
   assert.equal(result.length, 2);
-  assert.equal(result[0]?.label, "Vdmeer Consultancy");
+  assert.equal(result[0]?.label, "Onderneming Voorbeeld");
   assert.equal(result[0]?.date, "2026-09-30");
   assert.equal(result[0]?.amount, 5625);
   assert.equal(result[0]?.frequency, "maandelijks");
   assert.equal(result[0]?.status, "provisional_estimate");
   assert.equal(result[0]?.minimumAmount, 2000);
   assert.equal(result[0]?.maximumAmount, 9250);
-  assert.equal(result[1]?.label, "STICHTING TIMON");
+  assert.equal(result[1]?.label, "Werkgever Voorbeeld");
   assert.equal(result[1]?.date, "2026-10-24");
   assert.equal(result[1]?.confidence, "medium");
   assert.equal(result[1]?.sourceTransactionIds.length, 3);

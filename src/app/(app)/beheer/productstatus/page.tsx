@@ -22,7 +22,7 @@ export default async function ProductStatusPage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">Huidige uitrol</p>
             <h2 id="release-status-title" className="mt-1 text-2xl font-bold text-[var(--color-text)]">{health.release}</h2>
-            <p className="mt-1 text-sm text-[var(--color-text-muted)]">De Ruimte-ervaring draait binnen Huishouden, op hetzelfde datamodel.</p>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">Status van het huishoudboekje en de opgeslagen financiële gegevens.</p>
           </div>
           <StatusBadge tone={healthy ? "success" : "warning"}>{healthy ? "Alles rustig" : "Controle nodig"}</StatusBadge>
         </div>

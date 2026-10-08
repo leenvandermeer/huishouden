@@ -3,10 +3,10 @@ import test from "node:test";
 import { LEGACY_ROUTE_REDIRECTS, PRODUCT_EXPERIENCE, PRODUCT_NAME, PRODUCT_RELEASE } from "../src/lib/product";
 import { isProductEventType, normalizeProductPath } from "../src/modules/finance/product-health";
 
-test("productidentiteit houdt merk en ervaring bewust apart", () => {
+test("productidentiteit beschrijft het huishoudboekje", () => {
   assert.equal(PRODUCT_NAME, "Huishouden");
-  assert.equal(PRODUCT_EXPERIENCE, "Ruimte");
-  assert.match(PRODUCT_RELEASE, /^ruimte-\d{4}\.\d{2}$/);
+  assert.equal(PRODUCT_EXPERIENCE, "Huishoudboekje");
+  assert.match(PRODUCT_RELEASE, /^huishouden-\d{4}\.\d{2}$/);
 });
 
 test("oude hoofdroutes houden een tijdelijke, niet-destructieve bestemming", () => {

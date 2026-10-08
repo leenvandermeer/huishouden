@@ -1,12 +1,3 @@
-update pots
-set name = 'Benzine'
-where lower(name) = 'bezine'
-  and account_id in (
-    select id
-    from accounts
-    where upper(regexp_replace(iban, '\s', '', 'g')) = 'NL93RABO1012731537'
-  );
-
 with ranked as (
   select
     id,
