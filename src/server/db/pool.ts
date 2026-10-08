@@ -1,13 +1,13 @@
 import { Pool, type QueryResultRow } from "pg";
 
-const defaultDatabaseUrl = "postgres://huishouden:huishouden@localhost:5434/huishouden";
-
 declare global {
   var huishoudenPool: Pool | undefined;
 }
 
 export function getDatabaseUrl() {
-  return process.env.DATABASE_URL || defaultDatabaseUrl;
+  const value = process.env.DATABASE_URL;
+  if (!value?.trim()) throw new Error("DATABASE_URL ontbreekt in de omgevingsconfiguratie.");
+  return value;
 }
 
 export function getPool() {

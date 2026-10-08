@@ -1,11 +1,13 @@
+import { requireEnvironment } from "./environment";
 import { hash } from "@node-rs/argon2";
 import { Pool } from "pg";
 import { defaultCategories } from "../src/modules/finance/default-categories";
 import { marketCategories, marketMappingRules } from "../src/modules/finance/market-mapping";
 
-const databaseUrl = process.env.DATABASE_URL || "postgres://huishouden:huishouden@localhost:5434/huishouden";
-const adminEmail = process.env.SEED_ADMIN_EMAIL || "leen@vdmeer.local";
-const adminPassword = process.env.SEED_ADMIN_PASSWORD || "huishoudboekje-dev";
+const databaseUrl = requireEnvironment("DATABASE_URL");
+const adminEmail = requireEnvironment("SEED_ADMIN_EMAIL");
+const adminPassword = requireEnvironment("SEED_ADMIN_PASSWORD");
+const adminName = process.env.SEED_ADMIN_NAME?.trim() || "Beheerder";
 const forceAdminPassword = process.env.SEED_ADMIN_PASSWORD_FORCE === "true";
 const seedCategories = [...defaultCategories, ...marketCategories];
 const seedRules = marketMappingRules;
@@ -36,18 +38,18 @@ async function main() {
 
     const existingUser = await client.query<{ id: string }>("select id from users where lower(email) = lower($1)", [adminEmail]);
     if (existingUser.rows.length === 0 || forceAdminPassword) {
+      if (adminPassword.length < 12) throw new Error("Wachtwoord moet minimaal 12 tekens hebben.");
       const passwordHash = await hash(adminPassword);
       await client.query(
         `insert into users (id, name, email, password_hash, role)
-         values ('usr_owner', 'Leen van der Meer', $1, $2, 'owner')
+         values ('usr_owner', $3, $1, $2, 'owner')
          on conflict (email) do update set name = excluded.name, password_hash = excluded.password_hash, role = excluded.role, disabled_at = null`,
-        [adminEmail, passwordHash],
+        [adminEmail, passwordHash, adminName],
       );
     } else {
       await client.query(
         `update users
-         set name = 'Leen van der Meer',
-             role = 'owner',
+         set role = 'owner',
              disabled_at = null
          where lower(email) = lower($1)`,
         [adminEmail],

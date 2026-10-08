@@ -11,7 +11,7 @@ echo "▶ Stop Docker app-container (indien actief)..."
 docker stop huishouden-app 2>/dev/null || true
 
 echo "▶ Start Docker postgres (indien nodig)..."
-docker compose -f "${REPO_DIR}/docker-compose.yml" up -d postgres 2>/dev/null || true
+docker compose --env-file "${REPO_DIR}/.env.local" -f "${REPO_DIR}/docker-compose.yml" up -d postgres 2>/dev/null || true
 
 echo "▶ Wacht op postgres..."
 sleep 3

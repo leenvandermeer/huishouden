@@ -6,15 +6,15 @@ Deze handleiding beschrijft de eerste lokale installatie, dagelijks ontwikkelen,
 
 | Doel | Opdracht |
 | --- | --- |
-| Eerste lokale installatie | `npm ci`, daarna `docker compose up -d postgres` en `npm run db:setup` |
+| Eerste lokale installatie | `npm ci`, daarna `docker compose --env-file .env.local up -d postgres` en `npm run db:setup` |
 | Dagelijks lokaal starten | `bash scripts/dev.sh` |
-| Alleen database starten | `docker compose up -d postgres` |
+| Alleen database starten | `docker compose --env-file .env.local up -d postgres` |
 | Nieuwe migraties uitvoeren | `npm run db:migrate` |
 | Alle controles voor een release | `npm run release:check` |
 | Naar productie deployen | `bash scripts/deploy-remote.sh --confirm-production` |
 | Productie na deploy controleren | `npm run prod:validate` |
 | Beschikbare rollbackpunten bekijken | `bash scripts/rollback-remote.sh --list` |
-| Docker- en appstatus bekijken | `docker compose ps` |
+| Docker- en appstatus bekijken | `docker compose --env-file .env.local ps` |
 
 ## Vereisten
 
@@ -30,11 +30,13 @@ Controleer de installatie:
 node --version
 npm --version
 docker --version
-docker compose version
+docker compose --env-file .env.local version
 docker info
 ```
 
 Als `docker info` meldt dat de daemon niet bereikbaar is, start dan eerst Docker Desktop en probeer het opnieuw.
+
+Stel `USER_PASSWORD` voor gebruikersbeheer privé in via de omgeving. `user:create` accepteert e-mail, naam en optioneel de rol; wachtwoorden worden niet als opdrachtargument meegegeven.
 
 ## Eerste lokale installatie
 
@@ -43,17 +45,15 @@ Voer deze opdrachten uit vanuit de hoofdmap van het project:
 ```bash
 npm ci
 cp .env.example .env.local
-docker compose up -d postgres
+# Vul je eigen database- en accountconfiguratie in .env.local in.
+docker compose --env-file .env.local up -d postgres
 npm run db:setup
 bash scripts/dev.sh
 ```
 
 Open daarna [http://localhost:3001](http://localhost:3001).
 
-Standaard ontwikkellogin:
-
-- E-mail: `leen@vdmeer.local`
-- Wachtwoord: `huishoudboekje-dev`
+Configureer je eigen account via `SEED_ADMIN_EMAIL` en `SEED_ADMIN_PASSWORD` in het lokale omgevingsbestand. Er zijn geen standaard inloggegevens.
 
 `npm run db:setup` voert eerst alle migraties uit en seedt daarna de lokale categorieën, regels en ontwikkelgebruiker. Gebruik dit bij de eerste installatie. Bij een bestaande database is normaal alleen `npm run db:migrate` nodig.
 
@@ -87,14 +87,14 @@ npm run db:migrate
 Handmatig starten kan eveneens:
 
 ```bash
-docker compose up -d postgres
+docker compose --env-file .env.local up -d postgres
 npm run dev -- --port 3001
 ```
 
 Stop de ontwikkelserver met `Ctrl+C`. Stop alleen de lokale database met:
 
 ```bash
-docker compose stop postgres
+docker compose --env-file .env.local stop postgres
 ```
 
 ## Beschikbare npm-scripts
@@ -120,7 +120,7 @@ docker compose stop postgres
 Zorg dat de lokale PostgreSQL-container draait en voer daarna uit:
 
 ```bash
-docker compose up -d postgres
+docker compose --env-file .env.local up -d postgres
 npm run release:check
 ```
 
@@ -224,9 +224,9 @@ Status op de productieserver:
 
 ```bash
 cd /opt/huishouden
-docker compose --env-file infra/.env.prod ps
-docker compose --env-file infra/.env.prod logs --tail=200 app
-docker compose --env-file infra/.env.prod logs --tail=200 postgres
+docker compose --env-file .env.local --env-file infra/.env.prod ps
+docker compose --env-file .env.local --env-file infra/.env.prod logs --tail=200 app
+docker compose --env-file .env.local --env-file infra/.env.prod logs --tail=200 postgres
 ```
 
 Bij een mislukte deploy: wijzig geen productiegegevens handmatig. Lees eerst de containerlogs. Herstel zo nodig een bekende snapshot met `bash scripts/rollback-remote.sh --confirm-production <release-id>` en voer daarna `npm run prod:validate` uit.
@@ -238,7 +238,7 @@ Beheer gebruikers normaal via `/beheer` als eigenaar.
 Lokale gebruiker aanmaken:
 
 ```bash
-npm run user:create -- gebruiker@example.nl "Naam gebruiker" "minimaal-veilig-wachtwoord" admin
+npm run user:create -- gebruiker@example.nl "Naam gebruiker" admin
 ```
 
 Mogelijke rollen zijn `owner`, `admin` en `readonly`.
@@ -246,7 +246,7 @@ Mogelijke rollen zijn `owner`, `admin` en `readonly`.
 Lokaal wachtwoord herstellen:
 
 ```bash
-USER_PASSWORD='nieuw-wachtwoord-van-minimaal-12-tekens' npm run user:set-password -- gebruiker@example.nl
+npm run user:set-password -- gebruiker@example.nl
 ```
 
 Het wachtwoordscript trekt bestaande sessies van die gebruiker in en verifieert de nieuwe hash direct.
@@ -259,7 +259,7 @@ Start Docker Desktop en controleer daarna:
 
 ```bash
 docker info
-docker compose up -d postgres
+docker compose --env-file .env.local up -d postgres
 ```
 
 ### Poort 3001 is al bezet
@@ -275,8 +275,8 @@ npm run dev -- --port 3005
 Controleer eerst:
 
 ```bash
-docker compose ps
-docker compose logs --tail=100 postgres
+docker compose --env-file .env.local ps
+docker compose --env-file .env.local logs --tail=100 postgres
 ```
 
 De lokale standaarddatabase luistert op `localhost:5434`.
@@ -289,3 +289,9 @@ Voer de migraties uit en herstart de ontwikkelserver:
 npm run db:migrate
 bash scripts/dev.sh
 ```
+
+## Omgevingsconfiguratie
+
+Vul vóór het starten `POSTGRES_USER`, `POSTGRES_PASSWORD` en `DATABASE_URL` in het private omgevingsbestand in. `DATABASE_URL` verwijst lokaal naar de gepubliceerde databasepoort; in Docker verwijst die naar de service `postgres`. Gebruik voor het eerste account zelfgekozen waarden voor `SEED_ADMIN_EMAIL`, `SEED_ADMIN_NAME` en `SEED_ADMIN_PASSWORD` (minimaal twaalf tekens). Er zijn geen ingebouwde accountgegevens of databasewachtwoorden.
+
+CLI-beheerscripts lezen lokaal `.env.local`. Geef Docker Compose hetzelfde bestand via `--env-file .env.local`. Op productie wordt uitsluitend de private `infra/.env.prod` gebruikt. Commit deze bestanden nooit.

@@ -1,7 +1,8 @@
+import { requireEnvironment } from "./environment";
 import { createHash, randomBytes } from "node:crypto";
 import { Pool } from "pg";
 
-const databaseUrl = process.env.DATABASE_URL || "postgres://huishouden:huishouden@localhost:5434/huishouden";
+const databaseUrl = requireEnvironment("DATABASE_URL");
 const appUrl = process.env.APP_URL || "http://localhost:3001";
 
 async function main() {

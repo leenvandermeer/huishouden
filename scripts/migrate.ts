@@ -1,8 +1,9 @@
+import { requireEnvironment } from "./environment";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { Pool } from "pg";
 
-const databaseUrl = process.env.DATABASE_URL || "postgres://huishouden:huishouden@localhost:5434/huishouden";
+const databaseUrl = requireEnvironment("DATABASE_URL");
 const migrationsDir = join(process.cwd(), "infra", "sql", "migrations");
 
 async function main() {

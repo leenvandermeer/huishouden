@@ -1,15 +1,16 @@
+import { requireEnvironment } from "./environment";
 import { hash, verify } from "@node-rs/argon2";
 import { Pool } from "pg";
 
-const databaseUrl = process.env.DATABASE_URL || "postgres://huishouden:huishouden@localhost:5434/huishouden";
+const databaseUrl = requireEnvironment("DATABASE_URL");
 const passwordFromEnv = process.env.USER_PASSWORD;
 
 async function main() {
-  const [, , emailArg, passwordArg] = process.argv;
+  const [, , emailArg] = process.argv;
   const email = emailArg?.trim();
-  const password = passwordArg || passwordFromEnv;
+  const password = passwordFromEnv;
   if (!email || !password) {
-    throw new Error("Gebruik: USER_PASSWORD='nieuw-wachtwoord' npm run user:set-password -- email");
+    throw new Error("Stel USER_PASSWORD in via de omgeving; gebruik npm run user:set-password -- email");
   }
   if (password.length < 12) {
     throw new Error("Wachtwoord moet minimaal 12 tekens hebben.");

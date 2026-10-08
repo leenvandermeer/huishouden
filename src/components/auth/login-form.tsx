@@ -45,7 +45,7 @@ export function LoginForm({ resetComplete = false, error, twoFactorPending = fal
           <StatusBadge tone="info">Privé</StatusBadge>
           <div>
             <FieldLabel htmlFor="email">E-mailadres</FieldLabel>
-            <Input id="email" name="email" type="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" placeholder="naam@vdmeer.local" required autoFocus />
+            <Input id="email" name="email" type="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} inputMode="email" placeholder="naam@example.nl" required autoFocus />
           </div>
           <div>
             <FieldLabel htmlFor="password">Wachtwoord</FieldLabel>

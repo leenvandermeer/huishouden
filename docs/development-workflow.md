@@ -7,7 +7,7 @@ Werk standaard lokaal in development. Productie wordt pas bijgewerkt wanneer wij
 ## Lokaal ontwikkelen
 
 ```bash
-docker compose up -d postgres
+docker compose --env-file .env.local up -d postgres
 npm run db:migrate
 bash scripts/dev.sh
 ```
@@ -39,7 +39,7 @@ De remote deploy accepteert alleen calls met `CONFIRM_PRODUCTION_DEPLOY=ja`. Zo 
 Gebruik het beheerscript wanneer een resetlink wel succesvol lijkt maar login daarna niet lukt:
 
 ```bash
-USER_PASSWORD='<nieuw wachtwoord>' npm run user:set-password -- leen@vdmeer.eu
+npm run user:set-password -- gebruiker@example.nl
 ```
 
 Het script schrijft een nieuwe Argon2-hash, trekt bestaande sessies in en verifieert direct dat het opgegeven wachtwoord tegen de opgeslagen hash klopt.

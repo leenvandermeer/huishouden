@@ -1,14 +1,18 @@
+import { requireEnvironment } from "./environment";
 import { hash } from "@node-rs/argon2";
 import { Pool } from "pg";
 
-const databaseUrl = process.env.DATABASE_URL || "postgres://huishouden:huishouden@localhost:5434/huishouden";
+const databaseUrl = requireEnvironment("DATABASE_URL");
 
 async function main() {
-  const [, , email, name = email, password = "huishoudboekje-dev", role = "owner"] = process.argv;
+  const [, , email, name = email, role = "owner"] = process.argv;
+  const password = requireEnvironment("USER_PASSWORD");
   if (!email) {
-    throw new Error("Gebruik: npm run user:create -- email naam wachtwoord [owner|admin|readonly]");
+    throw new Error("Gebruik: npm run user:create -- email naam [owner|admin|readonly]; stel USER_PASSWORD in via de omgeving");
   }
 
+  if (password.length < 12) throw new Error("Wachtwoord moet minimaal 12 tekens hebben.");
+  if (!["owner", "admin", "readonly"].includes(role)) throw new Error("Ongeldige gebruikersrol.");
   const pool = new Pool({ connectionString: databaseUrl });
   const passwordHash = await hash(password);
   try {

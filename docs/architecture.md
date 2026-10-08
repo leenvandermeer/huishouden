@@ -1,6 +1,6 @@
 # Architectuur huishoudboekje
 
-De applicatie volgt dezelfde hoofdkeuzes als `Urenregistratie`.
+Huishouden bewaart financiële gegevens in PostgreSQL en biedt servergestuurde schermen voor het huishoudboekje.
 
 Status: v2 productie-live op 23 september 2026. Database, login, rollen, bankimport, rapportages, transacties, sparen, vaste lasten, categoriebeheer, budgetten, slimme assistentie, export en selectief herstel draaien op PostgreSQL met echte transacties.
 

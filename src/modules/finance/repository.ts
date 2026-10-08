@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
-import { getPool, query } from "../../server/db/pool";
+import { getDatabaseUrl, getPool, query } from "../../server/db/pool";
 import { defaultCategories } from "./default-categories";
 import { estimateFixedExpenseDate } from "./fixed-expense-date";
 import { detectRecurringFrequency, normalizedSupplierKey } from "./recurrence";
@@ -4195,7 +4195,7 @@ function stableId(prefix: string, value: string) {
 }
 
 function counterAccountKey(value: string) {
-  const secret = process.env.COUNTER_ACCOUNT_KEY_SECRET || process.env.DATABASE_URL || process.env.POSTGRES_PASSWORD || "huishouden-local-counter-account-key";
+  const secret = process.env.COUNTER_ACCOUNT_KEY_SECRET || getDatabaseUrl();
   return createHmac("sha256", secret).update(value).digest("hex").slice(0, 24);
 }
 

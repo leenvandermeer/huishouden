@@ -7,14 +7,14 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: huishouden
-      POSTGRES_USER: huishouden
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-huishouden}
+      POSTGRES_USER: ${POSTGRES_USER:?Stel POSTGRES_USER in}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Stel POSTGRES_PASSWORD in}
     ports:
       - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_HOST_PORT:-5434}:5432"
     volumes:
       - huishouden_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U huishouden -d huishouden"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -26,9 +26,10 @@ services:
     container_name: huishouden-app
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://huishouden:huishouden@postgres:5432/huishouden}
+      DATABASE_URL: ${DATABASE_URL:?Stel DATABASE_URL in}
       APP_URL: ${APP_URL:-http://localhost:3000}
       RABOBANK_SAVINGS_IBANS: ${RABOBANK_SAVINGS_IBANS:-NL93RABO1012731537}
+      TOTP_PENDING_SECRET: ${TOTP_PENDING_SECRET:-}
       TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-}
       TOTP_ISSUER: ${TOTP_ISSUER:-Vdmeer Huishouden}
     ports:
@@ -43,8 +44,10 @@ services:
       context: .
       target: operations
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://huishouden:huishouden@postgres:5432/huishouden}
+      DATABASE_URL: ${DATABASE_URL:?Stel DATABASE_URL in}
       APP_URL: ${APP_URL:-http://localhost:3000}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-}
+      SEED_ADMIN_PASSWORD_FORCE: ${SEED_ADMIN_PASSWORD_FORCE:-false}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
       RABOBANK_SAVINGS_IBANS: ${RABOBANK_SAVINGS_IBANS:-NL93RABO1012731537}

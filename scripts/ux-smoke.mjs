@@ -2,8 +2,9 @@ import { chromium } from "playwright-core";
 
 const baseUrl = process.env.UX_TEST_URL ?? "http://localhost:3001";
 const executablePath = process.env.CHROME_BIN ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const email = process.env.UX_TEST_EMAIL ?? "leen@vdmeer.local";
-const password = process.env.UX_TEST_PASSWORD ?? "huishoudboekje-dev";
+const email = process.env.UX_TEST_EMAIL;
+const password = process.env.UX_TEST_PASSWORD;
+if (!email || !password) throw new Error("Stel UX_TEST_EMAIL en UX_TEST_PASSWORD in via de omgeving.");
 const outputDir = process.env.UX_TEST_OUTPUT_DIR ?? "/tmp";
 const preferredAccountId = process.env.UX_TEST_ACCOUNT_ID ?? "acct_b100b8541221bcb3a9ef2dfa";
 const browser = await chromium.launch({ executablePath, headless: true });
