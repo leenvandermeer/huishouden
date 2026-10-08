@@ -57,7 +57,7 @@ mkdir -p "${DEPLOY_DIR}/.releases"
 cd "${DEPLOY_DIR}"
 if [[ -f scripts/deploy.sh ]]; then
   tar --exclude='./.releases' --exclude='./.git' --exclude='./.next' --exclude='./node_modules' --exclude='./backups' --exclude='./infra/.env.prod' --exclude='./infra/.env.deploy' -czf ".releases/${RELEASE_ID}.tar.gz" .
-  if [[ -d .git ]]; then
+  if git rev-parse --verify HEAD >/dev/null 2>&1; then
     if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
       echo "Productie bevat gewijzigde Git-bestanden; deploy gestopt." >&2
       exit 1
@@ -67,6 +67,8 @@ if [[ -f scripts/deploy.sh ]]; then
 fi
 if [[ ! -d .git ]]; then
   git init -b main
+fi
+if ! git remote get-url origin >/dev/null 2>&1; then
   git remote add origin "${DEPLOY_REPOSITORY}"
 fi
 if [[ "$(git remote get-url origin)" != "${DEPLOY_REPOSITORY}" ]]; then
