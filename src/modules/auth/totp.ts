@@ -55,7 +55,7 @@ function encryptionKey(): Buffer | null {
 }
 
 function pendingSecret(): string {
-  const secret = process.env.TOTP_PENDING_SECRET ?? process.env.TOTP_ENCRYPTION_KEY ?? "";
+  const secret = process.env.TOTP_PENDING_SECRET || process.env.TOTP_ENCRYPTION_KEY || "";
   if (!secret) throw new Error("TOTP_PENDING_SECRET of TOTP_ENCRYPTION_KEY ontbreekt.");
   if (secret.length < 32) throw new Error("TOTP_PENDING_SECRET moet minimaal 32 tekens zijn.");
   return secret;

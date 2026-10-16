@@ -28,13 +28,20 @@ test("voorbeeldconfiguratie bevat geen vooraf ingevulde account- of databasegege
 });
 
 test("tweefactor-tokens vereisen een privé signing secret, ook lokaal", async () => {
-  const { createPendingTwoFactorToken } = await import("../src/modules/auth/totp");
+  const { createPendingTwoFactorToken, readPendingTwoFactorToken } = await import("../src/modules/auth/totp");
   const previousPending = process.env.TOTP_PENDING_SECRET;
   const previousEncryption = process.env.TOTP_ENCRYPTION_KEY;
   try {
     delete process.env.TOTP_PENDING_SECRET;
     delete process.env.TOTP_ENCRYPTION_KEY;
     assert.throws(() => createPendingTwoFactorToken("test-user"), /ontbreekt/);
+    process.env.TOTP_PENDING_SECRET = "short";
+    assert.throws(() => createPendingTwoFactorToken("test-user"), /minimaal 32/);
+    process.env.TOTP_PENDING_SECRET = "";
+    assert.throws(() => createPendingTwoFactorToken("test-user"), /ontbreekt/);
+    process.env.TOTP_ENCRYPTION_KEY = "a".repeat(64);
+    const token = createPendingTwoFactorToken("test-user");
+    assert.deepEqual(readPendingTwoFactorToken(token), { userId: "test-user" });
     process.env.TOTP_PENDING_SECRET = "short";
     assert.throws(() => createPendingTwoFactorToken("test-user"), /minimaal 32/);
   } finally {
