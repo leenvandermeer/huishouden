@@ -1,4 +1,4 @@
-# Financieel rekencontract 1.1.0
+# Financieel rekencontract 1.2.0
 
 Status: normatief voor Vandaag, rapportages en nieuwe resultaat-exports. Tijdzone: `Europe/Amsterdam`.
 
@@ -11,6 +11,7 @@ Dit document beschrijft wat de financiële begrippen betekenen en hoe bedragen r
 - Als geen volgend structureel inkomen bekend is, wordt de laatste kalenderdag van de maand gebruikt.
 - Betalingen op of vóór de horizon staan in de tijdlijn. Voor tijdsevenredige dagelijkse uitgaven telt de inkomensdag zelf niet mee: het bedrag is bedoeld om die dag te bereiken.
 - Een inkomstenbron met een datum vóór de peildatum mag nooit als horizon worden gebruikt.
+- Is op de peildatum al structureel inkomen geboekt, dan zit dat in de bankstand. Een handmatig gepland inkomen met de peildatum als datum schuift dan door naar de volgende termijn.
 
 ## Primaire begrippen
 
@@ -40,7 +41,7 @@ veilig te besteden
 
 Alle invoercomponenten worden eerst op eurocenten afgerond. Aftrekposten kunnen niet negatief zijn. De uitkomst mag wel negatief zijn: dat is een echt tekort en wordt niet op nul verborgen.
 
-In versie 1.1.0 ondersteunt de formule bewuste reserveringen, maar Vandaag geeft hiervoor nog `€ 0,00` door. Sparen en beleggen worden niet stilzwijgend als dagelijkse uitgaven behandeld. Expliciete reserveringsplanning is een uitbreidingswens.
+Sinds versie 1.1.0 ondersteunt de formule bewuste reserveringen, maar Vandaag geeft hiervoor nog `€ 0,00` door. Sparen en beleggen worden niet stilzwijgend als dagelijkse uitgaven behandeld. Expliciete reserveringsplanning is een uitbreidingswens.
 
 ## Zekerheid en onzekerheidsbuffer
 
@@ -69,19 +70,20 @@ De buffer is een aftrekpost in de berekening en wordt apart getoond. Zij wordt d
 Per actieve budgetcategorie:
 
 ```text
-budgettempo per dag = max(gepland, 0) / dagen in huidige maand
+budgettempo per dag (maand M) = max(gepland in M, 0) / dagen in M   (0 zonder budget voor M)
 historisch tempo per dag = mediaan(werkelijke uitgaven per dag per historische maand)
-verwacht voor periode = max(budgettempo, historisch tempo) × dagen tot horizon
+verwacht voor periode = Σ per maand M: max(budgettempo M, historisch tempo) × dagen in M tot horizon
 ```
 
 - Het historische tempo wordt alleen gebruikt met ten minste drie waargenomen afgeronde kalendermaanden, uit maximaal de zes vorige maanden. Maandbedragen worden eerst door het aantal dagen van hun eigen maand gedeeld.
 - De eerste waargenomen maand van elke actieve rekening wordt als mogelijk onvolledig behandeld. Alleen maanden na de meest recente van die eerste maanden zijn bruikbaar. Dit is een conservatieve datadekkingsregel, geen bewijs van volledige imports.
 - Maanden zonder uitgaven binnen deze periode tellen als nul. Interne overboekingen en gekoppelde interne transacties tellen niet mee.
-- De periode stopt uiterlijk op de eerste dag van de volgende maand; een budget van deze maand wordt niet als budget voor de volgende maand gebruikt.
-- Alleen actieve categorieën met een maandbudget en type `variabele_uitgave` of `reservering` doen mee.
+- De periode loopt door tot de horizon. Elke kalendermaand gebruikt haar eigen budget; een budget van deze maand wordt niet als budget voor de volgende maand gebruikt.
+- Alle actieve categorieën van type `variabele_uitgave` of `reservering` doen mee, ook zonder maandbudget. Zonder budget telt alleen het historische tempo; een ontbrekend maandplan betekent dus geen verwachte uitgaven van nul.
+- Uitgaven zonder categorie tellen niet mee in het historische tempo.
 - Een opgebruikt of overschreden budget stopt de verwachte uitgaven niet. Een lager resterend budget verlaagt de prognose dus niet automatisch.
 - Het scherm vermeldt hoeveel van de verwachting voortkomt uit een hoger historisch tempo. Die verhoging is onderdeel van de verwachte uitgaven en wordt niet nogmaals afgetrokken. De CSV bevat dezelfde verhoging als metadata.
-- Dit is een verwachting, geen reeds gemaakte uitgave of expliciete reservering. Zonder betrouwbare historie gebruikt de berekening het budgettempo.
+- Dit is een verwachting, geen reeds gemaakte uitgave of expliciete reservering. Zonder betrouwbare historie gebruikt de berekening het budgettempo; zonder historie én zonder budget is de verwachting voor die categorie nul.
 
 ## Categoriecontract
 
@@ -160,6 +162,13 @@ Op 21 september: budget €300, al uitgegeven €450, nog drie dagen tot inkomen
 - De spreiding is historische steekproefstandaardafwijking maal de wortel van de tijdshorizon in maanden. Zij heeft geen kanspercentage. Historische foutmaten toetsen één maandstap, niet de nauwkeurigheid over zes maanden.
 - Ontbrekende, verschillende, toekomstige of meer dan zeven dagen oude saldodatums en ontbrekende transactiehistorie leiden tot zichtbare meldingen. Historische saldi zijn reconstructies uit de huidige stand, geen bewezen historische bankafschriften.
 
+## Verschil met versie 1.1.0
+
+1. Verwachte variabele uitgaven stopten in 1.1.0 op de eerste dag van de volgende maand en telden alleen categorieën met een budget voor de huidige maand. Zonder maandbudget of bij inkomen na de maandgrens werd de verwachting daardoor (bijna) nul en viel veilig te besteden te hoog uit. In 1.2.0 loopt de raming door tot de horizon, met per maand het eigen budget en het historische mediaantempo als ondergrens.
+2. Een gepland inkomen op de peildatum is niet meer de horizon zodra er die dag al structureel inkomen is geboekt.
+
+De hoofdformule voor veilig te besteden blijft gelijk; scherm en exports vermelden versie 1.2.0.
+
 ## Verschil met versie 1.0.0
 
 1. Vierwekelijks inkomen wordt per betalingsdag geschat in plaats van per kalendermaand.
@@ -179,7 +188,7 @@ De hoofdformule voor veilig te besteden blijft gelijk. De betekenis van de invoe
 
 ## Exportcontract
 
-- Financiële resultaat-CSV’s vermelden `Rekencontract;1.1.0`.
+- Financiële resultaat-CSV’s vermelden `Rekencontract;1.2.0`.
 - De volledige JSON-back-up en transactie-CSV vermelden dezelfde contractversie als metadata, los van de back-up-schemaversie.
 - De back-up-schemaversie beschrijft herstelcompatibiliteit; de rekencontractversie beschrijft de betekenis van financiële uitkomsten.
 - Een betekeniswijziging vereist een nieuwe contractversie en bijgewerkte voorbeelden en tests.

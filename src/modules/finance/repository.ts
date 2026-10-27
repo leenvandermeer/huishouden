@@ -829,7 +829,7 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
        limit 160`,
       [STRUCTURAL_INCOME_CATEGORY_IDS],
     ),
-    query<{ planned: string; spent: string; historical_daily_rates: string[] }>(
+    query<{ planned: string | null; later_budgets: Record<string, number> | null; spent: string; historical_daily_rates: string[] }>(
       `with eligible as (
          select t.* from transactions t join accounts a on a.id = t.account_id
          where a.archived_at is null and t.booked_at <= $2::date
@@ -842,22 +842,26 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
          select category_id, date_trunc('month', booked_at) as month, sum(abs(amount)) as actual
          from eligible where amount < 0 and kind <> 'interne_overboeking'
            and internal_transfer_group is null
+           and booked_at >= date_trunc('month', $2::date) - interval '6 months'
          group by category_id, date_trunc('month', booked_at)
        )
-       select b.planned_amount::text as planned, coalesce(a.actual, 0)::text as spent,
+       select b.planned_amount::text as planned,
+         (select json_object_agg(later.month, later.planned_amount) from budgets later
+          where later.category_id = c.id and later.month > $1) as later_budgets,
+         coalesce(a.actual, 0)::text as spent,
          array(
            select (coalesce(h.actual, 0) / extract(day from m.month + interval '1 month - 1 day'))::text
            from generate_series(date_trunc('month', $2::date) - interval '6 months',
              date_trunc('month', $2::date) - interval '1 month', interval '1 month') as m(month)
            cross join coverage
-           left join actuals h on h.category_id = b.category_id and h.month = m.month
+           left join actuals h on h.category_id = c.id and h.month = m.month
            where m.month > coverage.first_month
            order by m.month
          ) as historical_daily_rates
-       from budgets b
-       join categories c on c.id = b.category_id
-       left join actuals a on a.category_id = b.category_id and a.month = date_trunc('month', $2::date)
-       where b.month = $1 and c.valid_to is null
+       from categories c
+       left join budgets b on b.category_id = c.id and b.month = $1
+       left join actuals a on a.category_id = c.id and a.month = date_trunc('month', $2::date)
+       where c.valid_to is null
          and c.kind in ('variabele_uitgave', 'reservering')`,
       [currentMonth, asOf],
     ),
@@ -872,6 +876,10 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
   ]);
 
   const skippedEventKeys = new Set(skippedEventResult.rows.map((row) => row.event_key));
+  // Once today's structural income is booked it is part of the bank balance, so a
+  // planned income due today can no longer be the horizon.
+  const incomeReceivedToday = incomeHistoryResult.rows.some((row) => row.booked_on === asOf);
+  const plannedIncomeMinimum = incomeReceivedToday ? nextDay(asOf) : asOf;
 
   const plannedIncomes: IncomeForecastSource[] = plannedIncomeResult.rows.map((row) => ({
     id: row.id,
@@ -880,7 +888,7 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
     amount: Number(row.amount),
     minimumAmount: Number(row.amount),
     maximumAmount: Number(row.amount),
-    date: rollDateForward(row.next_expected_on, row.frequency, asOf),
+    date: rollDateForward(row.next_expected_on, row.frequency, plannedIncomeMinimum),
     frequency: row.frequency,
     estimated: false,
     status: "manual" as const,
@@ -921,11 +929,13 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
   ].filter((row) => row.date <= horizon.date && !skippedEventKeys.has(`expense:${row.id}:${row.date}`));
   const scheduledExpenses = roundMoney(expenses.reduce((sum, row) => sum + row.amount, 0));
   const budgetRows = budgetResult.rows.map((row) => ({
-    planned: Number(row.planned), spent: Number(row.spent),
+    planned: row.planned == null ? undefined : Number(row.planned),
+    plannedByMonth: Object.fromEntries(Object.entries(row.later_budgets ?? {}).map(([month, amount]) => [month, Number(amount)])),
+    spent: Number(row.spent),
     historicalDailyRates: row.historical_daily_rates.map(Number),
   }));
   const expectedBudgetExpenses = estimateBudgetExpensesUntil(budgetRows, asOf, horizon.date);
-  const budgetOnlyExpenses = estimateBudgetExpensesUntil(budgetRows.map(({ planned, spent }) => ({ planned, spent })), asOf, horizon.date);
+  const budgetOnlyExpenses = estimateBudgetExpensesUntil(budgetRows.map(({ planned, plannedByMonth, spent }) => ({ planned, plannedByMonth, spent })), asOf, horizon.date);
   const budgetHistoryAdjustment = roundMoney(expectedBudgetExpenses - budgetOnlyExpenses);
   const daysUntilIncome = nextIncome ? daysBetween(asOf, nextIncome.date) : undefined;
   const uncertaintyMargin = calculateForecastUncertaintyMargin({
@@ -1041,6 +1051,11 @@ function rollDateForward(date: string, frequency: FixedExpense["frequency"], min
   let candidate = recurringOccurrence(date, frequency, occurrence);
   while (candidate < minimum) candidate = recurringOccurrence(date, frequency, ++occurrence);
   return candidate;
+}
+
+function nextDay(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
 }
 
 function daysBetween(start: string, end: string) {

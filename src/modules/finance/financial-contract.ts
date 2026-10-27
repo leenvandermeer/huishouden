@@ -1,5 +1,5 @@
 /** Version of the shared financial definitions and equations used by UI and exports. */
-export const FINANCIAL_CONTRACT_VERSION = "1.1.0";
+export const FINANCIAL_CONTRACT_VERSION = "1.2.0";
 
 export const FINANCIAL_TERMS = {
   bankBalance: {

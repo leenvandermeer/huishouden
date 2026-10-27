@@ -49,6 +49,6 @@ Een verschil groter dan €0,01 tussen scherm en CSV blokkeert een release.
 
 De export bevat dezelfde samenvatting als het scherm: direct beschikbaar, gereserveerd, lange termijn, schulden en netto vermogen. Iedere rekeningregel vermeldt type, groep, saldo, peildatum, saldobron, kwaliteitsstatus, saldoverschil, laatste import en laatste transactie. Schulden worden als negatieve rekeningstand opgenomen; interne overboekingen veranderen het netto totaal niet.
 
-## Rekencontract 1.1.0
+## Rekencontract 1.2.0
 
-Financiële metadata gebruikt rekencontract 1.1.0. De kolommen blijven gelijk. De bron voor verwachte uitgaven in Vandaag is `budgets_and_spending_history`; metadata `# budget_history_adjustment` vermeldt de historische verhoging die al in de aftrek is opgenomen. Die metadata is geen extra aftrekpost.
+Financiële metadata gebruikt rekencontract 1.2.0. De kolommen blijven gelijk. De bron voor verwachte uitgaven in Vandaag is `budgets_and_spending_history`; metadata `# budget_history_adjustment` vermeldt de historische verhoging die al in de aftrek is opgenomen. Die metadata is geen extra aftrekpost.

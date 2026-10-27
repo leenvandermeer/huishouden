@@ -61,7 +61,7 @@ test("gefilterde transactie-export bewaart filters, sortering en bronvelden", ()
 
 test("Vandaag-CSV reconcileert exact met veilig te besteden", () => {
   const forecast: DashboardCashflowForecast = {
-    calculationVersion: "1.1.0",
+    calculationVersion: "1.2.0",
     asOf: "2026-09-21",
     horizon: { date: "2026-09-24", reason: "next_income" },
     state: "estimated",
