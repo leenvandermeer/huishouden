@@ -62,3 +62,27 @@ Historische maandtoetsen reconstrueren perioden uit de huidige transactiehistori
 De mediaan kan een incidentele grote kasstroom minder bepalend maken, maar een structurele verandering of seizoenspatroon wordt nog niet expliciet gemodelleerd. Onvolledige imports zijn zonder bankdekking niet sluitend vast te stellen. Er wordt geen kanspercentage aan de indicatieve spreiding gekoppeld. De bankregel voor de eerste werkdag behandelt alleen weekenden; feestdagen zijn geen gegarandeerde verschuiving. Budgetcategorieën zonder maandplan vallen nog buiten de uitgavenraming.
 
 De concrete definities, rekenvoorbeelden en verschillen met 1.0.0 staan in het [rekencontract 1.1.0](financieel-rekencontract-v1.md).
+
+## Tweede vervolg: rekencontract 1.2.0
+
+Bij een nieuwe controle van Vandaag bleek de grens “Budgetcategorieën zonder maandplan vallen nog buiten de uitgavenraming” in de praktijk zwaar te wegen. Samen met de stop op de maandgrens kon veilig te besteden daardoor fors te hoog uitvallen.
+
+| Bevinding | Uitgevoerd |
+| --- | --- |
+| Geen maandbudget voor de huidige maand | Alle actieve categorieën van type `variabele_uitgave` en `reservering` doen mee. Zonder budget telt het historische mediaantempo; een ontbrekend maandplan geeft dus geen verwachting van nul meer. |
+| Horizon na de maandgrens | De raming stopt niet meer op de eerste dag van de volgende maand. Elke kalendermaand tot de horizon gebruikt haar eigen budget, met het historische tempo als ondergrens. Een budget van deze maand wordt niet doorgetrokken naar de volgende maand. |
+| Betaaldag | Een handmatig gepland inkomen op de peildatum is niet meer de horizon zodra er die dag al structureel inkomen is geboekt. Dat inkomen zit dan al in de bankstand. |
+| Efficiëntie | De historische uitgavenquery leest alleen de laatste zes maanden. Expressie-indexen (migratie 046) versnellen het zoeken van eerdere betalingen per tegenpartij voor vaste lasten en categoriesuggesties. |
+
+### Verificatie
+
+- `npm run check`: lint, typecontrole, 111 tests en productiebuild geslaagd. Regressietests dekken budget per maand over de maandgrens, ontbrekend budget met en zonder voldoende historie, en het niet doortrekken van het budget van deze maand.
+- `npm run forecast:audit` op de lokale database: scherm, hoofdformule en CSV sluiten exact aan onder versie 1.2.0. De historische budgetverhoging wordt nu toegepast.
+- Lokale uitkomst op peildatum 27 oktober met horizon 15 november: de verwachte variabele uitgaven gaan van € 0 (geen budget voor oktober, stop op 1 november) naar € 2.412. Vaste lasten tot de horizon sluiten aan op de Vooruit-planning.
+- Uitgerold naar productie als commit `75a5a43`; de healthchecks zijn geslaagd. De reconciliatie op productiedata (wijzigingsregel 4 van het rekencontract) is nog niet uitgevoerd.
+
+### Open punten
+
+- Een vaste last die vóór de horizon twee keer valt (bijvoorbeeld vierwekelijks), telt in Vandaag één keer; de Vooruit-planning telt beide termijnen. Op de lokale dataset komt dit nu niet voor.
+- Uitgaven zonder categorie tellen niet mee in het historische tempo.
+- De betaaldagregel heeft nog geen eigen regressietest, omdat de logica in de databasefunctie zit.
