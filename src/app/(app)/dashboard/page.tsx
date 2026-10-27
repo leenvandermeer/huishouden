@@ -68,9 +68,9 @@ export default async function DashboardPage() {
         <dl>
           <BreakdownRow label={FINANCIAL_TERMS.bankBalance.label} value={forecast.paymentBalance} href="/vermogen" />
           <BreakdownRow label={FINANCIAL_TERMS.scheduledExpenses.label} value={-forecast.scheduledExpenses} />
-          <BreakdownRow label={FINANCIAL_TERMS.expectedBudgetExpenses.label} value={-forecast.expectedBudgetExpenses} hint="Naar tijd berekend uit je maandbudgetten" />
+          <BreakdownRow label={FINANCIAL_TERMS.expectedBudgetExpenses.label} value={-forecast.expectedBudgetExpenses} hint="Budgettempo of hoger historisch uitgaventempo; ook na budgetoverschrijding" />
           {forecast.explicitReservations > 0 ? <BreakdownRow label={FINANCIAL_TERMS.explicitReservations.label} value={-forecast.explicitReservations} /> : null}
-          {forecast.uncertaintyMargin > 0 ? <BreakdownRow label={FINANCIAL_TERMS.uncertaintyMargin.label} value={-forecast.uncertaintyMargin} hint="Voor geschatte datums met beperkte zekerheid" /> : null}
+          {forecast.uncertaintyMargin > 0 ? <BreakdownRow label={FINANCIAL_TERMS.uncertaintyMargin.label} value={-forecast.uncertaintyMargin} hint="Voor onzekere datums en wisselend of afwijkend inkomen" /> : null}
           <BreakdownRow label={FINANCIAL_TERMS.safeToSpend.label} value={forecast.availableToSpend} strong />
         </dl>
         <div className="forecast-evidence mt-4 border-t border-border pt-3">
@@ -87,8 +87,9 @@ export default async function DashboardPage() {
               <div className="mt-2 flex items-center justify-between gap-2"><span className="font-semibold">{formatCurrency(forecast.scheduledExpenses)}</span><Link href="/vaste-lasten" className="text-brand hover:underline">Bekijk bronnen</Link></div>
             </article>
             <article className="rounded-xl border border-border bg-white p-3 text-xs">
-              <div className="flex items-start justify-between gap-2"><span><strong className="block text-brand">Maandbudgetten</strong><small className="mt-1 block text-[var(--color-text-muted)]">Naar tijd omgerekend tot {formatDate(forecast.horizon.date)}</small></span><StatusBadge tone="info">Berekend</StatusBadge></div>
+              <div className="flex items-start justify-between gap-2"><span><strong className="block text-brand">Maandbudgetten</strong><small className="mt-1 block text-[var(--color-text-muted)]">Budgettempo en uitgavenhistorie tot {formatDate(forecast.horizon.date)}</small></span><StatusBadge tone="info">Berekend</StatusBadge></div>
               <div className="mt-2 flex items-center justify-between gap-2"><span className="font-semibold">{formatCurrency(forecast.expectedBudgetExpenses)}</span><Link href={`/budgetten?month=${currentMonth}`} className="text-brand hover:underline">Bekijk budgetten</Link></div>
+              {forecast.budgetHistoryAdjustment > 0 ? <p className="mt-2 text-[var(--color-text-muted)]">Inclusief {formatCurrency(forecast.budgetHistoryAdjustment)} extra omdat je historische uitgaventempo hoger ligt.</p> : null}
             </article>
           </div>
         </div>

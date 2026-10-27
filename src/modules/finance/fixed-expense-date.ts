@@ -1,3 +1,4 @@
+import { recurringOccurrence } from "./recurrence";
 import type { Frequency } from "./types";
 
 export type DueDateConfidence = "high" | "medium" | "low";
@@ -21,21 +22,37 @@ const dayMs = 86_400_000;
 
 export function estimateFixedExpenseDate(bookedDates: string[], frequency: Frequency, asOf: string, supplier?: string): FixedExpenseDateEstimate | undefined {
   if (frequency === "maandelijks" && isRabobankFixedCosts(supplier)) return estimateFirstBusinessDay(asOf);
-  const dates = Array.from(new Set(bookedDates.filter(isDateString))).sort().slice(-6);
+  const dates = Array.from(new Set(bookedDates.filter((date) => isDateString(date) && date <= asOf))).sort().slice(-6);
   if (!dates.length || !isDateString(asOf)) return undefined;
 
   if (frequency === "vierwekelijks") return estimateFourWeeklyDate(dates, asOf);
 
-  const projections = dates.map((date) => projectAfter(date, frequency, asOf)).sort();
-  const projectedTimes = projections.map(toUtcTime);
-  const averageTime = projectedTimes.reduce((sum, value) => sum + value, 0) / projectedTimes.length;
-  let date = fromUtcTime(Math.round(averageTime / dayMs) * dayMs);
+  // Estimate all observations in one target cycle before rolling the estimate forward.
+  // Projecting each observation independently can average September and October into October 10.
+  const step = frequency === "maandelijks" ? 1 : frequency === "kwartaal" ? 3 : 12;
+  const latest = dates.at(-1)!;
+  const [latestYear, latestMonth] = latest.split("-").map(Number);
+  let cycle = 1;
+  let projections: string[];
+  let projectedTimes: number[];
+  let date: string;
+  let weekendAdjusted: boolean;
   const mostlyWeekdays = dates.filter((value) => !isWeekend(value)).length / dates.length >= 0.75;
-  const weekendAdjusted = mostlyWeekdays && isWeekend(date);
-  if (weekendAdjusted) date = nextWeekday(date);
+  do {
+    const targetMonth = latestYear * 12 + latestMonth - 1 + step * cycle++;
+    projections = dates.map((observed) => {
+      const [year, month] = observed.split("-").map(Number);
+      return recurringOccurrence(observed, "maandelijks", targetMonth - (year * 12 + month - 1));
+    }).sort();
+    projectedTimes = projections.map(toUtcTime);
+    const averageTime = projectedTimes.reduce((sum, value) => sum + value, 0) / projectedTimes.length;
+    date = fromUtcTime(Math.round(averageTime / dayMs) * dayMs);
+    weekendAdjusted = mostlyWeekdays && isWeekend(date);
+    if (weekendAdjusted) date = nextWeekday(date);
+  } while (date < asOf);
 
   const spreadDays = Math.round((Math.max(...projectedTimes) - Math.min(...projectedTimes)) / dayMs);
-  const confidence: DueDateConfidence = dates.length >= 4 && spreadDays <= 3
+  const confidence: DueDateConfidence = dates.length >= 5 && spreadDays <= 3
     ? "high"
     : dates.length >= 2 && spreadDays <= 7
       ? "medium"
@@ -74,13 +91,11 @@ function isRabobankFixedCosts(supplier?: string) {
 function estimateFourWeeklyDate(dates: string[], asOf: string): FixedExpenseDateEstimate {
   let date = addDays(dates.at(-1)!, 28);
   while (date < asOf) date = addDays(date, 28);
-  const mostlyWeekdays = dates.filter((value) => !isWeekend(value)).length / dates.length >= 0.75;
-  const weekendAdjusted = mostlyWeekdays && isWeekend(date);
-  if (weekendAdjusted) date = nextWeekday(date);
+  const weekendAdjusted = false;
 
   const gaps = dates.slice(1).map((value, index) => Math.round((toUtcTime(value) - toUtcTime(dates[index])) / dayMs));
   const spreadDays = gaps.length ? Math.max(...gaps) - Math.min(...gaps) : 0;
-  const confidence: DueDateConfidence = dates.length >= 4 && spreadDays <= 2
+  const confidence: DueDateConfidence = dates.length >= 5 && spreadDays <= 2
     ? "high"
     : dates.length >= 2 && spreadDays <= 4
       ? "medium"
@@ -89,27 +104,8 @@ function estimateFourWeeklyDate(dates: string[], asOf: string): FixedExpenseDate
   return { date, confidence, evidenceCount: dates.length, spreadDays, weekendAdjusted };
 }
 
-function projectAfter(date: string, frequency: Frequency, minimum: string) {
-  if (frequency === "vierwekelijks") {
-    let candidate = addDays(date, 28);
-    while (candidate < minimum) candidate = addDays(candidate, 28);
-    return candidate;
-  }
-  const months = frequency === "maandelijks" ? 1 : frequency === "kwartaal" ? 3 : 12;
-  let candidate = addMonths(date, months);
-  while (candidate < minimum) candidate = addMonths(candidate, months);
-  return candidate;
-}
-
 function addDays(date: string, days: number) {
   return fromUtcTime(toUtcTime(date) + days * dayMs);
-}
-
-function addMonths(date: string, months: number) {
-  const [year, month, day] = date.split("-").map(Number);
-  const target = new Date(Date.UTC(year, month - 1 + months, 1));
-  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
-  return `${target.getUTCFullYear()}-${String(target.getUTCMonth() + 1).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
 }
 
 function nextWeekday(date: string) {
@@ -133,5 +129,5 @@ function fromUtcTime(time: number) {
 }
 
 function isDateString(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(toUtcTime(value));
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(toUtcTime(value)) && fromUtcTime(toUtcTime(value)) === value;
 }

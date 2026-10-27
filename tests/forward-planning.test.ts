@@ -49,3 +49,13 @@ test("30, 60 en 90 dagen hebben een vaste inclusieve einddatum", () => {
   assert.equal(buildForwardPlanning({ asOf: "2026-09-21", horizonDays: 60, openingBalance: 0, sources: [] }).endDate, "2026-11-20");
   assert.equal(buildForwardPlanning({ asOf: "2026-09-21", horizonDays: 90, openingBalance: 0, sources: [] }).endDate, "2026-12-20");
 });
+
+test("maandelijkse planning behoudt de oorspronkelijke dag na februari", () => {
+  const model = buildForwardPlanning({ asOf: "2026-01-31", horizonDays: 90, openingBalance: 1000, sources: [base({ date: "2026-01-31" })] });
+  assert.deepEqual(model.events.map((event) => event.date), ["2026-01-31", "2026-02-28", "2026-03-31", "2026-04-30"]);
+});
+
+test("ook het doorschuiven van oude bronnen behoudt de oorspronkelijke dag", () => {
+  const model = buildForwardPlanning({ asOf: "2026-03-01", horizonDays: 30, openingBalance: 1000, sources: [base({ date: "2026-01-31" })] });
+  assert.deepEqual(model.events.map((event) => event.date), ["2026-03-31"]);
+});

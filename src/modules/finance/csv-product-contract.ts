@@ -61,12 +61,12 @@ export function toTodayCalculationCsv(forecast: DashboardCashflowForecast, expor
     ["component", "date", "label", "amount", "estimated", "confidence", "source"],
     ["balance", forecast.asOf, "Op betaalrekeningen", forecast.paymentBalance, false, "confirmed", "accounts"],
     ["deduction", forecast.horizon.date, "Vaste lasten vóór inkomen", -forecast.scheduledExpenses, forecast.timeline.some((item) => item.type === "expense" && item.estimated), weakestConfidence(forecast.timeline.filter((item) => item.type === "expense").map((item) => item.confidence)), "fixed_expenses"],
-    ["deduction", forecast.horizon.date, "Verwachte uitgaven vóór inkomen", -forecast.expectedBudgetExpenses, true, "calculated", "budgets"],
+    ["deduction", forecast.horizon.date, "Verwachte uitgaven vóór inkomen", -forecast.expectedBudgetExpenses, true, "calculated", "budgets_and_spending_history"],
     ["deduction", forecast.horizon.date, "Bewuste reserveringen", -forecast.explicitReservations, false, "confirmed", "reservations"],
     ["deduction", forecast.horizon.date, "Onzekerheidsbuffer", -forecast.uncertaintyMargin, true, "calculated", "forecast_margin"],
     ["result", forecast.horizon.date, "Veilig te besteden", forecast.availableToSpend, forecast.state !== "planned", forecast.state === "planned" ? "confirmed" : "estimated", `contract:${forecast.calculationVersion}`],
   ];
-  return encodeExcelCsv([...metadata, [], ...rows]);
+  return encodeExcelCsv([...metadata, ["# budget_history_adjustment", forecast.budgetHistoryAdjustment], [], ...rows]);
 }
 
 export function toForwardCsv(events: ForwardCsvEvent[], asOf: string, exportedAt?: string) {

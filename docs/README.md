@@ -11,6 +11,7 @@ Huishouden helpt één huishouden inkomsten, uitgaven, budgetten en vermogen bij
 | [Veiligheid en privacy](veiligheid-en-privacy.md) | Toegangsrechten, geheimen en openbare publicatie |
 | [Back-up en herstel](back-up-en-herstel.md) | Gegevens bewaren, controleren en herstellen |
 | [Financieel rekencontract](financieel-rekencontract-v1.md) | Definities, formules, afronding en fictieve rekenvoorbeelden |
+| [Forecastcontrole](forecast-audit-2026-10-27.md) | Bevindingen, verbeteringen en validatie van de forecasting |
 | [CSV-contract](csv-productcontract-v1.md) | Exportversie, kolommen, filters en reconciliatie |
 
 De business requirements zijn de centrale productbron. Het rekencontract bepaalt de betekenis van financiële uitkomsten; het CSV-contract bepaalt de betekenis van exports. Voorbeelden zijn fictief en bevatten geen installatiegebonden inloggegevens of rekeningnummers.

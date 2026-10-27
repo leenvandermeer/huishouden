@@ -59,3 +59,9 @@ test("categoriecontract houdt inkomen, sparen en beleggen uit elkaar", () => {
   assert.equal(isSavingsTransferCategory("ontsparen"), true);
   assert.equal(isInvestmentCategory("beleggen"), true);
 });
+
+
+test("inkomensafwijking krijgt een buffer ook als een bron hoge zekerheid doorgeeft", () => {
+  assert.equal(calculateForecastUncertaintyMargin({ estimatedExpenses: [], expectedBudgetExpenses: 150, daysUntilHorizon: 3, incomeConfidence: "high", incomeStatus: "deviation" }), 100);
+  assert.equal(calculateForecastUncertaintyMargin({ estimatedExpenses: [], expectedBudgetExpenses: 150, daysUntilHorizon: 3, incomeConfidence: "high", incomeStatus: "manual" }), 0);
+});

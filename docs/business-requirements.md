@@ -109,7 +109,7 @@ Rechtstreekse bankkoppelingen, automatische aankoop-terugbetalingskoppeling, uit
 | BR81 | Beheer moet in businessblokken zijn gegroepeerd en technische labels vermijden. |
 | BR82 | Rapportages geven financiële analyse prioriteit; controlepunten staan in een herkenbare aparte weergave. |
 | BR83 | Maanden moeten gecontroleerd en afgesloten kunnen worden met notitie, zodat import, categorisering, budget en rekeningstanden bewust worden goedgekeurd. |
-| BR85 | Veilig te besteden gebruikt één versievaste formule met een inkomenshorizon, tijdsevenredige budgetuitgaven en een zichtbare onzekerheidsbuffer. |
+| BR85 | Veilig te besteden gebruikt één versievaste formule met een inkomenshorizon, verwachte uitgaven op basis van budgettempo en voldoende uitgavenhistorie, ook na budgetoverschrijding, en een zichtbare onzekerheidsbuffer. |
 | BR86 | Vooruit combineert beheerde en geschatte inkomsten, vaste lasten en eenmalige gebeurtenissen in een tijdlijn met zichtbare zekerheid. |
 | BR87 | Een scenarioberekening toont het effect van een financiële keuze zonder opgeslagen transacties of rekeningstanden te wijzigen. |
 

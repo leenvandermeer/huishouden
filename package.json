@@ -14,6 +14,7 @@
     "test": "tsx --test tests/*.test.ts",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "release:check": "bash scripts/release-check.sh",
+    "forecast:audit": "tsx scripts/audit-forecast.ts",
     "prod:validate": "bash scripts/validate-production.sh",
     "backup:rehearse": "tsx scripts/restore-rehearsal.ts",
     "ux:smoke": "node scripts/ux-smoke.mjs",

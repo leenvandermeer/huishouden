@@ -1,3 +1,4 @@
+import { recurringOccurrence } from "./recurrence";
 import type { ForecastConfidence, ForecastEvidenceStatus } from "./forecast-evidence";
 import type { Frequency } from "./types";
 
@@ -77,22 +78,14 @@ export function buildForwardPlanning(input: {
 function expandSource(source: ForwardPlanningSource, asOf: string, endDate: string) {
   const events: Array<Omit<ForwardPlanningEvent, "projectedBalance">> = [];
   let date = source.date;
-  while (date < asOf && source.frequency) date = addFrequency(date, source.frequency);
+  let occurrence = 0;
+  while (date < asOf && source.frequency) date = recurringOccurrence(source.date, source.frequency, ++occurrence);
   while (date >= asOf && date <= endDate) {
     events.push({ ...source, date, eventKey: `${source.sourceType}:${source.sourceId}:${date}` });
     if (!source.frequency) break;
-    date = addFrequency(date, source.frequency);
+    date = recurringOccurrence(source.date, source.frequency, ++occurrence);
   }
   return events;
-}
-
-function addFrequency(date: string, frequency: Frequency) {
-  if (frequency === "vierwekelijks") return addDays(date, 28);
-  const months = frequency === "maandelijks" ? 1 : frequency === "kwartaal" ? 3 : 12;
-  const [year, month, day] = date.split("-").map(Number);
-  const target = new Date(Date.UTC(year, month - 1 + months, 1));
-  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
-  return `${target.getUTCFullYear()}-${String(target.getUTCMonth() + 1).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
 }
 
 function addDays(date: string, days: number) {

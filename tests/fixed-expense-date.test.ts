@@ -23,7 +23,7 @@ test("schatting verschuift een verwacht weekend naar de volgende werkdag", () =>
 
   assert.equal(estimate?.date, "2026-09-28");
   assert.equal(estimate?.weekendAdjusted, true);
-  assert.equal(estimate?.confidence, "high");
+  assert.equal(estimate?.confidence, "medium");
 });
 
 test("een onregelmatig patroon krijgt lage zekerheid", () => {
@@ -59,4 +59,23 @@ test("Rabobank vaste kosten vallen op de eerste werkdag van de maand", () => {
   assert.equal(weekday?.weekendAdjusted, false);
 
   assert.equal(estimateFixedExpenseDate([], "maandelijks", "2026-09-23", "Vaste Kosten")?.date, "2026-10-01");
+});
+
+test("maandeinde verschuift niet blijvend naar februari bij oude historie", () => {
+  assert.equal(estimateFixedExpenseDate(["2026-01-31"], "maandelijks", "2026-03-01")?.date, "2026-03-31");
+});
+
+
+test("peildatum midden in betaalvenster mengt niet twee maanden", () => {
+  const estimate = estimateFixedExpenseDate(["2026-06-24", "2026-07-24", "2026-08-24", "2026-09-26"], "maandelijks", "2026-10-25");
+  assert.equal(estimate?.date, "2026-10-26");
+  assert.ok((estimate?.spreadDays ?? 99) <= 2);
+});
+
+test("vierwekelijkse datum blijft exact 28 dagen, ook in een weekend", () => {
+  assert.equal(estimateFixedExpenseDate(["2026-06-01", "2026-06-29", "2026-07-27", "2026-08-29"], "vierwekelijks", "2026-09-01")?.date, "2026-09-26");
+});
+
+test("ongeldige of toekomstige waarnemingen zijn geen bewijs", () => {
+  assert.equal(estimateFixedExpenseDate(["2026-02-30", "2026-12-01"], "maandelijks", "2026-10-01"), undefined);
 });

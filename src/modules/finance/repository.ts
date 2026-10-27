@@ -1,3 +1,4 @@
+import { recurringOccurrence } from "./recurrence";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { getDatabaseUrl, getPool, query } from "../../server/db/pool";
@@ -126,6 +127,7 @@ export interface DashboardCashflowForecast {
   availableToSpend: number;
   scheduledExpenses: number;
   expectedBudgetExpenses: number;
+  budgetHistoryAdjustment: number;
   explicitReservations: number;
   uncertaintyMargin: number;
   dailyAmount?: number;
@@ -821,27 +823,43 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
          and t.kind = 'inkomen'
          and t.category_id = any($1::text[])
          and t.internal_transfer_group is null
-         and t.booked_at >= current_date - interval '40 months'
+         and t.booked_at >= (now() at time zone 'Europe/Amsterdam')::date - interval '40 months'
+         and t.booked_at <= (now() at time zone 'Europe/Amsterdam')::date
        order by (t.category_id = 'salaris') desc nulls last, t.booked_at desc
        limit 160`,
       [STRUCTURAL_INCOME_CATEGORY_IDS],
     ),
-    query<{ planned: string; spent: string }>(
-      `with actuals as (
-         select t.category_id, sum(abs(t.amount)) as actual
-         from transactions t
-         where t.amount < 0
-           and t.kind <> 'interne_overboeking'
-           and to_char(t.booked_at, 'YYYY-MM') = $1
-         group by t.category_id
+    query<{ planned: string; spent: string; historical_daily_rates: string[] }>(
+      `with eligible as (
+         select t.* from transactions t join accounts a on a.id = t.account_id
+         where a.archived_at is null and t.booked_at <= $2::date
+       ), coverage as (
+         select max(first_month) as first_month from (
+           select account_id, date_trunc('month', min(booked_at)) as first_month
+           from eligible group by account_id
+         ) a
+       ), actuals as (
+         select category_id, date_trunc('month', booked_at) as month, sum(abs(amount)) as actual
+         from eligible where amount < 0 and kind <> 'interne_overboeking'
+           and internal_transfer_group is null
+         group by category_id, date_trunc('month', booked_at)
        )
-       select b.planned_amount::text as planned, coalesce(a.actual, 0)::text as spent
+       select b.planned_amount::text as planned, coalesce(a.actual, 0)::text as spent,
+         array(
+           select (coalesce(h.actual, 0) / extract(day from m.month + interval '1 month - 1 day'))::text
+           from generate_series(date_trunc('month', $2::date) - interval '6 months',
+             date_trunc('month', $2::date) - interval '1 month', interval '1 month') as m(month)
+           cross join coverage
+           left join actuals h on h.category_id = b.category_id and h.month = m.month
+           where m.month > coverage.first_month
+           order by m.month
+         ) as historical_daily_rates
        from budgets b
        join categories c on c.id = b.category_id
-       left join actuals a on a.category_id = b.category_id
-       where b.month = $1
+       left join actuals a on a.category_id = b.category_id and a.month = date_trunc('month', $2::date)
+       where b.month = $1 and c.valid_to is null
          and c.kind in ('variabele_uitgave', 'reservering')`,
-      [currentMonth],
+      [currentMonth, asOf],
     ),
     query<{ suggestion_key: string }>("select suggestion_key from ignored_suggestions where suggestion_type = 'income_candidate'"),
     query<{ event_key: string }>("select event_key from forecast_event_skips where occurrence_date >= current_date - interval '1 day'"),
@@ -902,17 +920,20 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
     ...plannedExpenseResult.rows.map((row) => ({ id: `one_off_${row.id}`, label: row.label, amount: Number(row.amount), date: row.due_on, type: "expense" as const, estimated: false, status: "manual" as const, confidence: "high" as const, evidenceCount: 0, sourceHref: "/planning" })),
   ].filter((row) => row.date <= horizon.date && !skippedEventKeys.has(`expense:${row.id}:${row.date}`));
   const scheduledExpenses = roundMoney(expenses.reduce((sum, row) => sum + row.amount, 0));
-  const expectedBudgetExpenses = estimateBudgetExpensesUntil(
-    budgetResult.rows.map((row) => ({ planned: Number(row.planned), spent: Number(row.spent) })),
-    asOf,
-    horizon.date,
-  );
+  const budgetRows = budgetResult.rows.map((row) => ({
+    planned: Number(row.planned), spent: Number(row.spent),
+    historicalDailyRates: row.historical_daily_rates.map(Number),
+  }));
+  const expectedBudgetExpenses = estimateBudgetExpensesUntil(budgetRows, asOf, horizon.date);
+  const budgetOnlyExpenses = estimateBudgetExpensesUntil(budgetRows.map(({ planned, spent }) => ({ planned, spent })), asOf, horizon.date);
+  const budgetHistoryAdjustment = roundMoney(expectedBudgetExpenses - budgetOnlyExpenses);
   const daysUntilIncome = nextIncome ? daysBetween(asOf, nextIncome.date) : undefined;
   const uncertaintyMargin = calculateForecastUncertaintyMargin({
     estimatedExpenses: expenses.filter((expense) => expense.estimated).map((expense) => ({ amount: expense.amount, confidence: expense.confidence })),
     expectedBudgetExpenses,
     daysUntilHorizon: daysUntilIncome,
     incomeConfidence: nextIncome?.confidence,
+    incomeStatus: nextIncome?.status,
   });
   const calculation = calculateSafeToSpend({ paymentBalance, scheduledExpenses, expectedBudgetExpenses, uncertaintyMargin });
   const availableToSpend = calculation.safeToSpend;
@@ -930,6 +951,7 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
     availableToSpend,
     scheduledExpenses,
     expectedBudgetExpenses,
+    budgetHistoryAdjustment,
     explicitReservations: calculation.explicitReservations,
     uncertaintyMargin: calculation.uncertaintyMargin,
     dailyAmount: daysUntilIncome == null ? undefined : roundMoney(Math.max(availableToSpend, 0) / Math.max(daysUntilIncome, 1)),
@@ -950,32 +972,37 @@ export function inferRecurringIncomes(
 ) {
   const groups = new Map<string, typeof rows>();
   for (const row of rows) {
+    if (row.booked_on > asOf || !Number.isFinite(Number(row.amount)) || Number(row.amount) <= 0) continue;
     const key = row.label.trim().toLowerCase();
     groups.set(key, [...(groups.get(key) ?? []), row]);
   }
   const candidates = Array.from(groups.values())
     .flatMap((group) => {
       const sorted = [...group].sort((a, b) => b.booked_on.localeCompare(a.booked_on));
-      const byMonth = new Map<string, { amount: number; latestDate: string }>();
+      const frequency = detectRecurringFrequency(sorted.map((row) => row.booked_on)) ?? "maandelijks";
+      // Calendar income may be split across dates; four-weekly income is per payment day.
+      const byPeriod = new Map<string, { amount: number; latestDate: string }>();
       for (const row of sorted) {
-        const month = row.booked_on.slice(0, 7);
-        const current = byMonth.get(month);
-        byMonth.set(month, {
+        const period = frequency === "vierwekelijks" ? row.booked_on : row.booked_on.slice(0, 7);
+        const current = byPeriod.get(period);
+        byPeriod.set(period, {
           amount: (current?.amount ?? 0) + Number(row.amount),
           latestDate: current && current.latestDate > row.booked_on ? current.latestDate : row.booked_on,
         });
       }
-      const monthly = Array.from(byMonth.values()).sort((a, b) => b.latestDate.localeCompare(a.latestDate)).slice(0, 6);
-      if (monthly.length < 2) return [];
-      const frequency = detectRecurringFrequency(sorted.map((row) => row.booked_on)) ?? "maandelijks";
+      const periods = Array.from(byPeriod.values()).sort((a, b) => b.latestDate.localeCompare(a.latestDate)).slice(0, 6);
+      if (periods.length < 2) return [];
       const staleAfterDays = frequency === "jaarlijks" ? 550 : frequency === "kwartaal" ? 190 : 62;
-      if (daysBetween(monthly[0].latestDate, asOf) > staleAfterDays) return [];
-      const amounts = monthly.map((row) => row.amount).sort((a, b) => a - b);
+      if (daysBetween(periods[0].latestDate, asOf) > staleAfterDays) return [];
+      const amounts = periods.map((row) => row.amount).sort((a, b) => a - b);
       const middle = Math.floor(amounts.length / 2);
       const amount = amounts.length % 2 ? amounts[middle] : (amounts[middle - 1] + amounts[middle]) / 2;
-      const confidence: ForecastConfidence = monthly.length >= 5 ? "high" : monthly.length >= 3 ? "medium" : "low";
-      const latestAmount = monthly[0].amount;
-      const deviates = monthly.length >= 4 && amount > 0 && Math.abs(latestAmount - amount) / amount >= 0.4;
+      const confidence: ForecastConfidence = periods.length >= 5 ? "high" : periods.length >= 3 ? "medium" : "low";
+      const latestAmount = periods[0].amount;
+      const deviates = periods.length >= 4 && amount > 0 && Math.abs(latestAmount - amount) / amount >= 0.4;
+      const relativeSpread = amount > 0 ? (Math.max(...amounts) - Math.min(...amounts)) / amount : 0;
+      // More observations do not remove material amount instability.
+      const effectiveConfidence: ForecastConfidence = deviates || relativeSpread >= 0.4 ? "low" : confidence;
       const candidateId = stableId("income_candidate", normalizedSupplierKey(sorted[0].label));
       return [{
         id: candidateId,
@@ -985,20 +1012,20 @@ export function inferRecurringIncomes(
         minimumAmount: roundMoney(Math.min(...amounts)),
         maximumAmount: roundMoney(Math.max(...amounts)),
         date: rollDateForward(
-          monthly[0].latestDate,
+          periods[0].latestDate,
           frequency,
           asOf,
           true,
         ),
         frequency,
         estimated: true,
-        status: estimateStatus(confidence, deviates),
-        confidence,
-        evidenceCount: monthly.length,
-        lastObservedOn: monthly[0].latestDate,
+        status: estimateStatus(effectiveConfidence, deviates),
+        confidence: effectiveConfidence,
+        evidenceCount: periods.length,
+        lastObservedOn: periods[0].latestDate,
         sourceTransactionIds: sorted.slice(0, 12).map((row) => row.id),
         salary: sorted.some((row) => row.category_id === "salaris"),
-        occurrences: monthly.length,
+        occurrences: periods.length,
       }];
     })
     .sort((a, b) => a.date.localeCompare(b.date) || Number(b.salary) - Number(a.salary) || b.occurrences - a.occurrences || b.amount - a.amount);
@@ -1010,22 +1037,10 @@ function amsterdamDateString() {
 }
 
 function rollDateForward(date: string, frequency: FixedExpense["frequency"], minimum: string, alwaysAdvance = false) {
-  let candidate = date;
-  if (alwaysAdvance) candidate = addFrequency(candidate, frequency);
-  while (candidate < minimum) candidate = addFrequency(candidate, frequency);
+  let occurrence = alwaysAdvance ? 1 : 0;
+  let candidate = recurringOccurrence(date, frequency, occurrence);
+  while (candidate < minimum) candidate = recurringOccurrence(date, frequency, ++occurrence);
   return candidate;
-}
-
-function addFrequency(date: string, frequency: FixedExpense["frequency"]) {
-  if (frequency === "vierwekelijks") {
-    const [year, month, day] = date.split("-").map(Number);
-    return new Date(Date.UTC(year, month - 1, day + 28)).toISOString().slice(0, 10);
-  }
-  const months = frequency === "maandelijks" ? 1 : frequency === "kwartaal" ? 3 : 12;
-  const [year, month, day] = date.split("-").map(Number);
-  const target = new Date(Date.UTC(year, month - 1 + months, 1));
-  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
-  return `${target.getUTCFullYear()}-${String(target.getUTCMonth() + 1).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
 }
 
 function daysBetween(start: string, end: string) {
@@ -2644,7 +2659,8 @@ export async function getInferredRecurringIncomeCandidatesFromDatabase(): Promis
          and t.kind = 'inkomen'
          and t.category_id = any($1::text[])
          and t.internal_transfer_group is null
-         and t.booked_at >= current_date - interval '40 months'
+         and t.booked_at >= (now() at time zone 'Europe/Amsterdam')::date - interval '40 months'
+         and t.booked_at <= (now() at time zone 'Europe/Amsterdam')::date
        order by t.booked_at desc
        limit 160`,
       [STRUCTURAL_INCOME_CATEGORY_IDS],

@@ -1,5 +1,5 @@
 /** Version of the shared financial definitions and equations used by UI and exports. */
-export const FINANCIAL_CONTRACT_VERSION = "1.0.0";
+export const FINANCIAL_CONTRACT_VERSION = "1.1.0";
 
 export const FINANCIAL_TERMS = {
   bankBalance: {
@@ -12,7 +12,7 @@ export const FINANCIAL_TERMS = {
   },
   expectedBudgetExpenses: {
     label: "Verwachte uitgaven vóór inkomen",
-    definition: "Het tijdsevenredige deel van variabele maandbudgetten dat naar verwachting vóór de horizon wordt uitgegeven.",
+    definition: "Verwachte variabele uitgaven op basis van het dagelijkse budgettempo en, bij voldoende historie, het historische uitgaventempo.",
   },
   explicitReservations: {
     label: "Bewuste reserveringen",
@@ -24,7 +24,7 @@ export const FINANCIAL_TERMS = {
   },
   safeToSpend: {
     label: "Veilig te besteden",
-    definition: "Bankstand min vaste lasten, verwachte uitgaven en bewuste reserveringen tot de horizon.",
+    definition: "Bankstand min vaste lasten, verwachte uitgaven, bewuste reserveringen en onzekerheidsbuffer tot de horizon.",
   },
 } as const;
 
@@ -74,6 +74,7 @@ export function calculateForecastUncertaintyMargin(input: {
   expectedBudgetExpenses: number;
   daysUntilHorizon?: number;
   incomeConfidence?: "high" | "medium" | "low";
+  incomeStatus?: "manual" | "strong_estimate" | "provisional_estimate" | "deviation";
 }) {
   const expenseMargin = input.estimatedExpenses.reduce((sum, expense) => {
     const factor = expense.confidence === "low" ? 0.1 : expense.confidence === "medium" ? 0.05 : 0;
@@ -81,7 +82,7 @@ export function calculateForecastUncertaintyMargin(input: {
   }, 0);
   const days = Math.max(input.daysUntilHorizon ?? 0, 1);
   const dailyExpected = Math.max(input.expectedBudgetExpenses, 0) / days;
-  const incomeDays = input.incomeConfidence === "low" ? 2 : input.incomeConfidence === "medium" ? 1 : 0;
+  const incomeDays = input.incomeStatus === "deviation" || input.incomeConfidence === "low" ? 2 : input.incomeConfidence === "medium" ? 1 : 0;
   return roundMoney(expenseMargin + dailyExpected * incomeDays);
 }
 

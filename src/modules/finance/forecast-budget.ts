@@ -1,12 +1,14 @@
 export interface ForecastBudgetRow {
   planned: number;
   spent: number;
+  /** Daily expense rates for completed, sufficiently covered historical months. */
+  historicalDailyRates?: number[];
 }
 
 /**
  * Estimate the variable spending that can still occur before the forecast
  * horizon. A monthly budget is a spending ceiling, not money that has already
- * been committed, so only the time-proportional part is held back.
+ * been committed. A spent budget does not imply future spending stops.
  */
 export function estimateBudgetExpensesUntil(
   rows: ForecastBudgetRow[],
@@ -19,9 +21,13 @@ export function estimateBudgetExpensesUntil(
   const days = Math.max(daysBetween(asOf, effectiveHorizon), 0);
 
   return roundMoney(rows.reduce((total, row) => {
-    const remaining = Math.max(row.planned - row.spent, 0);
-    const expectedForWindow = Math.max(row.planned, 0) * (days / daysInMonth);
-    return total + Math.min(remaining, expectedForWindow);
+    const budgetRate = Math.max(row.planned, 0) / daysInMonth;
+    const rates = (row.historicalDailyRates ?? []).filter((rate) => Number.isFinite(rate) && rate >= 0).sort((a, b) => a - b);
+    const middle = Math.floor(rates.length / 2);
+    const historicalRate = rates.length >= 3
+      ? rates.length % 2 ? rates[middle] : (rates[middle - 1] + rates[middle]) / 2
+      : 0;
+    return total + Math.max(budgetRate, historicalRate) * days;
   }, 0));
 }
 

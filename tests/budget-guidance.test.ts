@@ -10,7 +10,7 @@ const categories: Category[] = [
 ];
 
 const forecast: DashboardCashflowForecast = {
-  calculationVersion: "1.0.0",
+  calculationVersion: "1.1.0",
   asOf: "2026-09-20",
   horizon: { date: "2026-09-30", reason: "end_of_month" },
   state: "planned",
@@ -18,6 +18,7 @@ const forecast: DashboardCashflowForecast = {
   availableToSpend: 500,
   scheduledExpenses: 300,
   expectedBudgetExpenses: 200,
+  budgetHistoryAdjustment: 0,
   explicitReservations: 0,
   uncertaintyMargin: 0,
   incomeSources: [],

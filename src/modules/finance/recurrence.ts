@@ -45,3 +45,16 @@ function toUtcTime(date: string) {
 function isDateString(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(toUtcTime(value));
 }
+
+/** Project each occurrence from its original anchor to avoid February date drift. */
+export function recurringOccurrence(anchor: string, frequency: Frequency, occurrence: number): string {
+  const [year, month, day] = anchor.split("-").map(Number);
+  if (frequency === "vierwekelijks") {
+    return new Date(Date.UTC(year, month - 1, day + occurrence * 28)).toISOString().slice(0, 10);
+  }
+  const step = frequency === "maandelijks" ? 1 : frequency === "kwartaal" ? 3 : 12;
+  const target = new Date(Date.UTC(year, month - 1 + step * occurrence, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(day, lastDay));
+  return target.toISOString().slice(0, 10);
+}

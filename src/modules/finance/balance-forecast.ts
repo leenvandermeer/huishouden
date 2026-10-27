@@ -1,111 +1,52 @@
 import { query } from "@/server/db/pool";
-
-export interface BalanceForecastPoint {
-  month: string;
-  balance: number;
-  isForecast: boolean;
-  lowerBound?: number;
-  upperBound?: number;
-}
-
-export interface MonthlyFlowPoint {
-  month: string;
-  net: number;
-}
-
-export interface BalanceForecastData {
-  history: BalanceForecastPoint[];
-  forecast: BalanceForecastPoint[];
-  monthlyFlows: MonthlyFlowPoint[];
-  avgMonthlyNet: number;
-  volatility: number;
-  currentBalance: number;
-  forecastEnd: number;
-  trendDirection: "up" | "down" | "stable";
-}
+import { buildBalanceForecast, type BalanceForecastData } from "./balance-forecast-model";
+export type { BalanceForecastPoint, MonthlyFlowPoint, BalanceForecastData } from "./balance-forecast-model";
 
 export async function getBalanceForecastData(months = 12): Promise<BalanceForecastData> {
-  const currentMonth = new Date().toISOString().slice(0, 7);
-
+  const asOf = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
   const [balanceResult, monthlyResult] = await Promise.all([
-    query<{ total: string }>(
-      `select coalesce(sum(balance), 0)::text as total from accounts where archived_at is null`,
+    query<{ total: string; missing_dates: string; earliest_date: string | null; latest_date: string | null; no_history: string }>(
+      `select coalesce(sum(a.balance), 0)::text as total,
+         count(*) filter (where a.balance_date is null)::text as missing_dates,
+         to_char(min(a.balance_date), 'YYYY-MM-DD') as earliest_date,
+         to_char(max(a.balance_date), 'YYYY-MM-DD') as latest_date,
+         count(*) filter (where not exists (select 1 from transactions t where t.account_id = a.id))::text as no_history
+       from accounts a where a.archived_at is null`,
     ),
     query<{ month: string; net: string }>(
-      `select
-         to_char(booked_at, 'YYYY-MM') as month,
-         coalesce(sum(amount), 0)::text as net
-       from transactions
-       group by to_char(booked_at, 'YYYY-MM')
-       order by month`,
+      `with coverage as (
+         select max(first_month) as first_month from (
+           select a.id, date_trunc('month', min(t.booked_at)) as first_month
+           from accounts a join transactions t on t.account_id = a.id
+           where a.archived_at is null and t.booked_at <= $1::date group by a.id
+         ) account_history
+       )
+       select to_char(t.booked_at, 'YYYY-MM') as month, sum(t.amount)::text as net
+       from transactions t join accounts a on a.id = t.account_id
+       where a.archived_at is null and t.booked_at <= $1::date
+         and (date_trunc('month', t.booked_at) > (select first_month from coverage)
+           or to_char(t.booked_at, 'YYYY-MM') = left($1::text, 7))
+       group by to_char(t.booked_at, 'YYYY-MM') order by month`,
+      [asOf],
     ),
   ]);
-
-  const currentBalance = Number(balanceResult.rows[0]?.total ?? 0);
-  const flows = monthlyResult.rows.map((row) => ({
-    month: row.month,
-    net: Number(row.net),
-  }));
-
-  const monthlyFlows = flows.slice(-months);
-  const recentNets = monthlyFlows.map((f) => f.net);
-  const avgMonthlyNet = recentNets.length ? recentNets.reduce((s, n) => s + n, 0) / recentNets.length : 0;
-  const variance = recentNets.length > 1
-    ? recentNets.reduce((s, n) => s + (n - avgMonthlyNet) ** 2, 0) / (recentNets.length - 1)
-    : 0;
-  const volatility = Math.sqrt(variance);
-
-  // Bouw historisch saldo terug vanaf huidige bankstand.
-  // Saldo einde maand M = saldo einde maand M+1 minus netto van maand M+1.
-  const history: BalanceForecastPoint[] = [];
-  let running = currentBalance;
-  const currentMonthFlow = flows.find((f) => f.month === currentMonth);
-  if (currentMonthFlow) running -= currentMonthFlow.net;
-
-  for (let i = monthlyFlows.length - 1; i >= 0; i--) {
-    const flow = monthlyFlows[i];
-    if (flow.month === currentMonth) {
-      history.unshift({ month: flow.month, balance: currentBalance, isForecast: false });
-      continue;
-    }
-    history.unshift({ month: flow.month, balance: Math.round(running * 100) / 100, isForecast: false });
-    running -= flow.net;
+  const model = buildBalanceForecast(
+    Number(balanceResult.rows[0]?.total ?? 0),
+    monthlyResult.rows.map((row) => ({ month: row.month, net: Number(row.net) })),
+    asOf,
+    months,
+  );
+  const quality = balanceResult.rows[0];
+  if (Number(quality?.missing_dates ?? 0) > 0) model.dataWarnings.push("Bij sommige rekeningstanden ontbreekt een peildatum.");
+  if (Number(quality?.no_history ?? 0) > 0) model.dataWarnings.push("Voor sommige actieve rekeningen ontbreekt transactiehistorie.");
+  if (quality?.earliest_date && quality.latest_date && quality.earliest_date !== quality.latest_date) {
+    model.dataWarnings.push("De rekeningstanden hebben verschillende peildatums. Controleer de actuele standen.");
   }
-  if (!history.length || history[history.length - 1].month !== currentMonth) {
-    history.push({ month: currentMonth, balance: currentBalance, isForecast: false });
+  if (quality?.earliest_date && Date.parse(asOf) - Date.parse(quality.earliest_date) > 7 * 86_400_000) {
+    model.dataWarnings.push("Ten minste één rekeningstand is meer dan zeven dagen oud.");
   }
-
-  // Voorspelling: gemiddelde netto per maand met betrouwbaarheidsband op basis van volatiliteit
-  const forecast: BalanceForecastPoint[] = [];
-  let projected = currentBalance;
-  const forecastMonths = 6;
-  const lastMonth = history[history.length - 1].month;
-  for (let i = 1; i <= forecastMonths; i++) {
-    const [y, m] = lastMonth.split("-").map(Number);
-    const d = new Date(y, m - 1 + i, 1);
-    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    projected += avgMonthlyNet;
-    const spread = volatility * Math.sqrt(i) * 0.8;
-    forecast.push({
-      month: monthKey,
-      balance: Math.round(projected * 100) / 100,
-      isForecast: true,
-      lowerBound: Math.round((projected - spread) * 100) / 100,
-      upperBound: Math.round((projected + spread) * 100) / 100,
-    });
-  }
-
-  const trendDirection: "up" | "down" | "stable" =
-    avgMonthlyNet > 100 ? "up" : avgMonthlyNet < -100 ? "down" : "stable";
-
-  return {
-    history,
-    forecast,
-    monthlyFlows,
-    avgMonthlyNet: Math.round(avgMonthlyNet * 100) / 100,
-    volatility: Math.round(volatility * 100) / 100,
-    currentBalance,
-    forecastEnd: forecast[forecast.length - 1]?.balance ?? currentBalance,
-    trendDirection,
-  };
+  if (quality?.latest_date && quality.latest_date > asOf) model.dataWarnings.push("Een rekeningstand heeft een peildatum in de toekomst.");
+  return model;
 }

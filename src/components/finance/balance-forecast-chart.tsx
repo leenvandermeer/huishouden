@@ -17,7 +17,7 @@ export function BalanceForecastChart({ history, forecast, avgMonthlyNet }: Balan
   if (allPoints.length < 2) {
     return (
       <div className="grid h-64 place-items-center rounded-lg bg-[var(--color-surface)] text-sm text-[var(--color-text-muted)]">
-        Nog genoeg data nodig voor een saldo voorspelling.
+        Nog onvoldoende data voor een saldovoorspelling.
       </div>
     );
   }
@@ -148,7 +148,7 @@ export function BalanceForecastChart({ history, forecast, avgMonthlyNet }: Balan
           <p className="mt-0.5 tabular-nums font-bold text-brand">{formatCurrency(hovered.balance)}</p>
           {hovered.isForecast ? (
             <p className="mt-0.5 text-[0.62rem] text-[var(--color-invest)]">
-              verwacht bereik {compactEuro(hovered.lowerBound ?? 0)} – {compactEuro(hovered.upperBound ?? 0)}
+              indicatieve spreiding {compactEuro(hovered.lowerBound ?? 0)} – {compactEuro(hovered.upperBound ?? 0)}
             </p>
           ) : (
             <p className="mt-0.5 text-[0.62rem] text-[var(--color-text-subtle)]">actueel saldo</p>
@@ -159,7 +159,7 @@ export function BalanceForecastChart({ history, forecast, avgMonthlyNet }: Balan
       <div className="mt-2 flex flex-wrap items-center gap-4 px-1 text-[0.68rem] text-[var(--color-text-muted)]">
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#2457c5]" />Actueel saldo</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-[#7c3aed]" style={{ borderTop: "2px dashed #7c3aed" }} />Voorspelling</span>
-        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded bg-[#7c3aed]/15" />Betrouwbaarheidsband</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-4 rounded bg-[#7c3aed]/15" />Indicatieve spreiding</span>
         <span className="ml-auto inline-flex items-center gap-1.5 font-semibold">
           Gemiddeld per maand:
           <strong className={trendUp ? "text-emerald-600" : "text-amber-600"}>

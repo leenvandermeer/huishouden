@@ -61,6 +61,7 @@ npm run user:set-password -- gebruiker@example.nl
 | `npm run typecheck` | TypeScript |
 | `npm test` | Geautomatiseerde tests |
 | `npm run build` | Productiebuild |
+| `npm run forecast:audit` | Alleen-lezen forecastcontrole op de geconfigureerde database, inclusief scherm/CSV-reconciliatie |
 | `npm run release:check` | Alle bovenstaande controles, migraties en deploy-/rollbackguards |
 
 UX-controles gebruiken zelf ingestelde `UX_TEST_EMAIL`, `UX_TEST_PASSWORD` en `UX_TEST_ACCOUNT_ID`; er is geen vast testaccount. Voer tests die gegevens wijzigen uit in een eigen testomgeving.
@@ -86,6 +87,8 @@ bash scripts/deploy-remote.sh --confirm-production
 De deploy vereist een schone lokale checkout waarvan de commit gelijk is aan `main` op de repository. De server maakt een broncodesnapshot, haalt de gecontroleerde commit op en stopt bij gewijzigde tracked productiecode. Vervolgens worden migraties uitgevoerd en wordt de app gebouwd en herstart. Het script toont de commit en het rollbackpunt.
 
 De lokale, vooraf gekozen commit blijft bepalend: `deploy.sh` voert geen ongecontroleerde `git pull` uit. Een andere branch of niet-gepushte wijziging wordt niet stilzwijgend gedeployed.
+
+De forecastcontrole gebruikt `.env.local` buiten productie. Op een productieserver geef je de private omgeving op dezelfde manier als bij andere CLI-controles door en stel je `NODE_ENV=production` in. De opdracht dwingt alleen-lezen databaseverbindingen af en rapporteert alleen anonieme aantallen en controlestatussen, geen huishoudbedragen. Zij wijzigt geen gegevens en bewijst niet dat bankimports volledig zijn.
 
 ## Live controleren
 

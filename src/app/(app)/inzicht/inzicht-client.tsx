@@ -117,7 +117,7 @@ export function InzichtClient({ health, forecast, insight, fixedExpenses, budget
         <InsightKpi icon={<CircleDollarSign aria-hidden="true" size={17} />} label={resultLabel(selectedRow?.spendableNet ?? 0)} value={formatSignedCurrency(selectedRow?.spendableNet ?? 0)} tone={(selectedRow?.spendableNet ?? 0) >= 0 ? "positive" : "warning"} detail={`${formatCurrency(selectedRow?.income ?? 0)} binnen, ${formatCurrency((selectedRow?.spendableExpenses ?? 0) + (selectedRow?.savings ?? 0) + (selectedRow?.investments ?? 0))} eruit`} />
         <InsightKpi icon={<WalletCards aria-hidden="true" size={17} />} label="Vrij na gewone uitgaven" value={formatSignedCurrency(netAfterNormalExpenses)} tone={netAfterNormalExpenses >= 0 ? "positive" : "warning"} detail="Voor sparen, beleggen of bufferkeuzes." />
         <InsightKpi icon={<Landmark aria-hidden="true" size={17} />} label="Totaal saldo" value={formatCurrency(selectedRow?.totalBalance ?? insight.totalBalance)} detail={`Betaal ${formatCurrency(selectedRow?.paymentBalance ?? insight.paymentBalance)} / spaar ${formatCurrency(selectedRow?.savingsBalance ?? insight.savingsBalance)}`} />
-        <InsightKpi icon={(forecast.trendDirection === "down" ? <TrendingDown aria-hidden="true" size={17} /> : <TrendingUp aria-hidden="true" size={17} />)} label="6 mnd verwachting" value={formatCurrency(forecast.forecastEnd)} tone={forecast.trendDirection === "down" ? "warning" : "positive"} detail={`Gemiddeld ${formatSignedCurrency(forecast.avgMonthlyNet)} per maand`} />
+        <InsightKpi icon={(forecast.trendDirection === "down" ? <TrendingDown aria-hidden="true" size={17} /> : <TrendingUp aria-hidden="true" size={17} />)} label="6 mnd verwachting" value={forecast.forecast.length ? formatCurrency(forecast.forecastEnd) : "Onvoldoende historie"} tone={forecast.trendDirection === "down" ? "warning" : "positive"} detail={forecast.forecast.length ? `Historisch tempo ${formatSignedCurrency(forecast.avgMonthlyNet)} per maand` : "Minimaal drie afgeronde kalendermaanden nodig"} />
       </section>
 
       {selectedRow ? (
@@ -253,10 +253,12 @@ export function InzichtClient({ health, forecast, insight, fixedExpenses, budget
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-brand">Waar kan je saldo over zes maanden uitkomen?</h2>
-            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Bij een gemiddeld maandverschil van {formatSignedCurrency(forecast.avgMonthlyNet)} komt de middenraming uit op {formatCurrency(forecast.forecastEnd)}.</p>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{forecast.forecast.length ? `Op basis van afgeronde maanden: ${forecast.method === "median" ? "mediaan" : "gemiddeld"} ${formatSignedCurrency(forecast.avgMonthlyNet)} per maand, raming einde maand ${formatCurrency(forecast.forecastEnd)}. Het restant van deze maand telt naar tijd mee. De spreiding is indicatief en biedt geen kansgarantie.` : "Er zijn minimaal drie afgeronde kalendermaanden nodig voor een saldoraming."}</p>
           </div>
           <StatusBadge tone={health.bufferStatus === "critical" ? "warning" : health.bufferStatus === "warning" ? "info" : "success"}>{health.label}</StatusBadge>
         </div>
+        {forecast.dataWarnings.length > 0 ? <div className="mb-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">{forecast.dataWarnings.map((warning) => <p key={warning}>{warning}</p>)}</div> : null}
+        <p className="mb-2 text-xs text-[var(--color-text-muted)]">Historische saldi zijn teruggerekend uit de huidige standen. {forecast.validation.folds > 0 ? `Getoetst op ${forecast.validation.folds} historische maandstappen; gemiddelde absolute fout ${formatCurrency((forecast.method === "median" ? forecast.validation.medianAbsoluteError : forecast.validation.meanAbsoluteError) ?? 0)}. Dit bewijst geen nauwkeurigheid voor de komende zes maanden.` : "Nog onvoldoende historie om de voorspellingsfout te toetsen."}</p>
         <ForecastChart forecast={forecast} />
       </section>
       </>
@@ -631,10 +633,10 @@ function ForecastChart({ forecast }: { forecast: BalanceForecastData }) {
     xAxis: { type: "category", data: rows.map((row) => formatShortMonth(row.month)), axisLabel: { color: mutedColor, fontWeight: 600 } },
     yAxis: { type: "value", axisLabel: { color: mutedColor, formatter: (value: number) => compactEuro(value) }, splitLine: { lineStyle: { color: "rgba(148,163,184,0.18)" } } },
     series: [
-      { name: "Werkelijk", type: "line", smooth: true, data: rows.map((row) => (row.isForecast ? null : row.balance)), lineStyle: { width: 3 }, symbolSize: 7 },
-      { name: "Verwachting", type: "line", smooth: true, data: rows.map((row) => row.balance), lineStyle: { width: 2, type: "dashed" }, symbolSize: 5 },
-      { name: "Bandbreedte hoog", type: "line", smooth: true, data: rows.map((row) => row.upperBound ?? null), lineStyle: { opacity: 0.45 }, symbol: "none" },
-      { name: "Bandbreedte laag", type: "line", smooth: true, data: rows.map((row) => row.lowerBound ?? null), lineStyle: { opacity: 0.45 }, symbol: "none" },
+      { name: "Teruggerekend / actueel", type: "line", smooth: false, data: rows.map((row) => (row.isForecast ? null : row.balance)), lineStyle: { width: 3 }, symbolSize: 7 },
+      { name: "Verwachting", type: "line", smooth: false, data: rows.map((row) => row.balance), lineStyle: { width: 2, type: "dashed" }, symbolSize: 5 },
+      { name: "Indicatieve bovengrens", type: "line", smooth: false, data: rows.map((row) => row.upperBound ?? null), lineStyle: { opacity: 0.45 }, symbol: "none" },
+      { name: "Indicatieve ondergrens", type: "line", smooth: false, data: rows.map((row) => row.lowerBound ?? null), lineStyle: { opacity: 0.45 }, symbol: "none" },
     ],
   };
   return <EChartsPanel className="h-80" option={option} />;

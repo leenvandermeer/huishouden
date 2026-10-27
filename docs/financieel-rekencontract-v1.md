@@ -1,4 +1,4 @@
-# Financieel rekencontract 1.0.0
+# Financieel rekencontract 1.1.0
 
 Status: normatief voor Vandaag, rapportages en nieuwe resultaat-exports. Tijdzone: `Europe/Amsterdam`.
 
@@ -40,7 +40,7 @@ veilig te besteden
 
 Alle invoercomponenten worden eerst op eurocenten afgerond. Aftrekposten kunnen niet negatief zijn. De uitkomst mag wel negatief zijn: dat is een echt tekort en wordt niet op nul verborgen.
 
-In versie 1.0.0 ondersteunt de formule bewuste reserveringen, maar Vandaag geeft hiervoor nog `€ 0,00` door. Sparen en beleggen worden niet stilzwijgend als dagelijkse uitgaven behandeld. Expliciete reserveringsplanning is een uitbreidingswens.
+In versie 1.1.0 ondersteunt de formule bewuste reserveringen, maar Vandaag geeft hiervoor nog `€ 0,00` door. Sparen en beleggen worden niet stilzwijgend als dagelijkse uitgaven behandeld. Expliciete reserveringsplanning is een uitbreidingswens.
 
 ## Zekerheid en onzekerheidsbuffer
 
@@ -49,7 +49,7 @@ Elke prognosebron gebruikt een van deze zichtbare statussen:
 | Status | Betekenis |
 | --- | --- |
 | Zelf ingevuld | Bedrag of datum wordt door de gebruiker beheerd. |
-| Sterke schatting | Minimaal vijf bruikbare perioden ondersteunen het patroon. |
+| Sterke schatting | Minimaal vijf bruikbare perioden ondersteunen een voldoende stabiel patroon. |
 | Voorlopige schatting | Twee tot vier bruikbare perioden ondersteunen het patroon. |
 | Afwijking | De laatste waarneming wijkt bij voldoende historie minstens 40% van de mediaan af. |
 
@@ -58,24 +58,30 @@ De onzekerheidsbuffer is reproduceerbaar:
 - 10% van een geschatte vaste last met lage zekerheid;
 - 5% van een geschatte vaste last met gemiddelde zekerheid;
 - nul voor hoge zekerheid of een zelf ingevulde datum;
-- daarnaast twee dagen verwachte budgetuitgaven bij lage inkomenszekerheid, één dag bij gemiddelde zekerheid en nul bij hoge zekerheid.
+- daarnaast twee dagen verwachte budgetuitgaven bij lage inkomenszekerheid of status `Afwijking`, één dag bij gemiddelde zekerheid en nul bij hoge zekerheid;
+- inkomenszekerheid wordt laag zodra het verschil tussen minimum en maximum minstens 40% van de mediaan is, of de laatste waarneming bij voldoende historie minstens 40% afwijkt. Meer waarnemingen nemen deze bedragsonzekerheid niet weg;
+- dit is een reproduceerbare voorzichtigheidsmarge, geen gekalibreerde voorspelling van betaalvertraging. Een handmatig beheerde bron blijft zelf ingevuld.
 
 De buffer is een aftrekpost in de berekening en wordt apart getoond. Zij wordt dus niet verborgen in een ander bedrag.
 
 ## Verwachte uitgaven uit maandbudgetten
 
-Per budgetcategorie:
+Per actieve budgetcategorie:
 
 ```text
-resterend maandbudget = max(gepland − werkelijk uitgegeven, 0)
-verwacht voor periode = gepland × dagen tot horizon / dagen in maand
-mee te rekenen bedrag = min(resterend maandbudget, verwacht voor periode)
+budgettempo per dag = max(gepland, 0) / dagen in huidige maand
+historisch tempo per dag = mediaan(werkelijke uitgaven per dag per historische maand)
+verwacht voor periode = max(budgettempo, historisch tempo) × dagen tot horizon
 ```
 
+- Het historische tempo wordt alleen gebruikt met ten minste drie waargenomen afgeronde kalendermaanden, uit maximaal de zes vorige maanden. Maandbedragen worden eerst door het aantal dagen van hun eigen maand gedeeld.
+- De eerste waargenomen maand van elke actieve rekening wordt als mogelijk onvolledig behandeld. Alleen maanden na de meest recente van die eerste maanden zijn bruikbaar. Dit is een conservatieve datadekkingsregel, geen bewijs van volledige imports.
+- Maanden zonder uitgaven binnen deze periode tellen als nul. Interne overboekingen en gekoppelde interne transacties tellen niet mee.
 - De periode stopt uiterlijk op de eerste dag van de volgende maand; een budget van deze maand wordt niet als budget voor de volgende maand gebruikt.
-- Alleen actieve categorieën van het type `variabele_uitgave` of `reservering` doen mee.
-- Een overschreden budget levert geen negatieve aftrek op.
-- Dit is een verwachting en geen claim dat het resterende budget al gereserveerd of uitgegeven is.
+- Alleen actieve categorieën met een maandbudget en type `variabele_uitgave` of `reservering` doen mee.
+- Een opgebruikt of overschreden budget stopt de verwachte uitgaven niet. Een lager resterend budget verlaagt de prognose dus niet automatisch.
+- Het scherm vermeldt hoeveel van de verwachting voortkomt uit een hoger historisch tempo. Die verhoging is onderdeel van de verwachte uitgaven en wordt niet nogmaals afgetrokken. De CSV bevat dezelfde verhoging als metadata.
+- Dit is een verwachting, geen reeds gemaakte uitgave of expliciete reservering. Zonder betrouwbare historie gebruikt de berekening het budgettempo.
 
 ## Categoriecontract
 
@@ -89,7 +95,7 @@ mee te rekenen bedrag = min(resterend maandbudget, verwacht voor periode)
 | Beleggen | `beleggen` | Aparte vermogensstroom | Nee |
 | Interne overboeking | soort `interne_overboeking` | Geen inkomen of uitgave op huishoudniveau | Nee |
 
-Meerdere betalingen van dezelfde structurele bron binnen één maand worden vóór de inkomensschatting opgeteld. Bronnen blijven onderling gescheiden. Daardoor worden salaris en ondernemingsinkomen niet tot één gemiddeld salaris vermengd.
+Bij maandelijkse, kwartaal- en jaarbronnen worden betalingen van dezelfde bron binnen één kalendermaand opgeteld. Bij een herkend vierwekelijks ritme worden bedragen per betaaldag opgeteld, zodat twee betalingen in dezelfde maand niet samen één termijn worden. De bedragsschatting is de mediaan van maximaal zes recente betalingsperioden. Toekomstige waarnemingen tellen niet mee op een eerdere peildatum. Bronnen blijven onderling gescheiden. Daardoor worden salaris en ondernemingsinkomen niet tot één gemiddeld salaris vermengd.
 
 ## Voorbeelden
 
@@ -133,11 +139,35 @@ De zichtbare onderdelen en de CSV-uitvoer moeten exact op €550,00 uitkomen.
 
 ### 4. Vierwekelijks patroon
 
-Een bevestigde vierwekelijkse betaling schuift steeds exact 28 dagen op. Zij wordt niet behandeld als een kalendermaand en wordt op jaarbasis als dertien termijnen gerekend.
+Drie betalingen van €1.000 op 2 januari, 30 januari en 27 februari geven een termijnbedrag van €1.000, niet een mediaan maandbedrag van €1.500. Een bevestigde vierwekelijkse betaling schuift steeds exact 28 dagen op, ook in een weekend. Zij wordt niet behandeld als een kalendermaand en wordt op jaarbasis als dertien termijnen gerekend.
 
 ### 5. Geen bekende inkomensdatum
 
 Op 20 februari 2024 zonder herkenbaar volgend inkomen is de horizon 29 februari 2024. De interface markeert de planning als onvolledig; zij verzint geen salarisdatum.
+
+### 6. Budget opgebruikt en hoger historisch tempo
+
+Op 21 september: budget €300, al uitgegeven €450, nog drie dagen tot inkomen. Zonder voldoende historie wordt nog €30 verwacht: €300 / 30 × 3. Dit was in 1.0.0 nul. Bij historische dagtempo's €20, €22 en €200 gebruikt de schatting de mediaan €22 en verwacht zij €66. De historische verhoging is €36 en staat apart toegelicht, binnen de totale aftrek van €66.
+
+## Betaaldatums en saldoraming
+
+- Maand-, kwartaal- en jaarbetalingen worden steeds vanaf hun oorspronkelijke brondatum geprojecteerd. Een korte maand verlaagt de oorspronkelijke betaaldag niet blijvend.
+- Bij vaste lasten worden historische dagen eerst naar dezelfde verwachte cyclus geprojecteerd en daarna gemiddeld. Pas de gezamenlijke datum wordt naar een volgende cyclus doorgeschoven als die vóór de peildatum ligt. Een peildatum midden in een betaalvenster mengt zo geen twee maanden.
+- Een weekendcorrectie bij kalenderbetalingen gebruikt de historische voorkeur voor werkdagen. De bankspecifieke eerste-werkdagregel corrigeert alleen weekenden, geen feestdagen. Vierwekelijkse betalingen blijven exact 28 dagen volgen.
+- De afzonderlijke saldoraming gebruikt actieve rekeningen en ten minste drie afgeronde kalendermaanden. Mogelijk onvolledige startmaanden worden uitgesloten. De actuele maand wordt niet als trainingsmaand gebruikt.
+- De saldoraming vergelijkt gemiddelde en mediaan op opeenvolgende historische maandstappen, met telkens uitsluitend eerdere maanden als training. De mediaan wordt pas gekozen bij minstens zes toetsstappen en een minstens 10% lagere gemiddelde absolute fout. Dit is een selectieregel, geen bewijs van betere toekomstige nauwkeurigheid.
+- Prognosepunten zijn ramingen voor het einde van de komende zes kalendermaanden. Het restant van de huidige maand telt mee naar rato van de dagen ná de peildatum. Deze tijdsverdeling kan afwijken van echte betaalmomenten; daarvoor dient Vooruit.
+- De spreiding is historische steekproefstandaardafwijking maal de wortel van de tijdshorizon in maanden. Zij heeft geen kanspercentage. Historische foutmaten toetsen één maandstap, niet de nauwkeurigheid over zes maanden.
+- Ontbrekende, verschillende, toekomstige of meer dan zeven dagen oude saldodatums en ontbrekende transactiehistorie leiden tot zichtbare meldingen. Historische saldi zijn reconstructies uit de huidige stand, geen bewezen historische bankafschriften.
+
+## Verschil met versie 1.0.0
+
+1. Vierwekelijks inkomen wordt per betalingsdag geschat in plaats van per kalendermaand.
+2. Onstabiele of afwijkende inkomsten krijgen een voorzichtiger zekerheid en buffer.
+3. Verwachte variabele uitgaven worden niet meer begrensd op onbesteed budget; een hoger historisch dagtempo kan de verwachting verhogen.
+4. Kalenderprojecties, historische toetsing, maandafsluitingsramingen en datakwaliteitsmeldingen zijn expliciet beschreven.
+
+De hoofdformule voor veilig te besteden blijft gelijk. De betekenis van de invoercomponenten en dus mogelijke uitkomsten veranderen; daarom vermelden scherm en exports versie 1.1.0. Historische exports met 1.0.0 blijven de toenmalige definities volgen.
 
 ## Afronding en reconciliatie
 
@@ -149,7 +179,7 @@ Op 20 februari 2024 zonder herkenbaar volgend inkomen is de horizon 29 februari 
 
 ## Exportcontract
 
-- Financiële resultaat-CSV’s vermelden `Rekencontract;1.0.0`.
+- Financiële resultaat-CSV’s vermelden `Rekencontract;1.1.0`.
 - De volledige JSON-back-up en transactie-CSV vermelden dezelfde contractversie als metadata, los van de back-up-schemaversie.
 - De back-up-schemaversie beschrijft herstelcompatibiliteit; de rekencontractversie beschrijft de betekenis van financiële uitkomsten.
 - Een betekeniswijziging vereist een nieuwe contractversie en bijgewerkte voorbeelden en tests.
