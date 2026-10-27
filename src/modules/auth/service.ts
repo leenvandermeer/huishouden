@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { hash, verify } from "@node-rs/argon2";
 import { query } from "@/server/db/pool";
 import {
@@ -213,7 +214,8 @@ export async function disableManagedUser(userId: string, actorUserId: string) {
   return (result.rowCount ?? 0) > 0;
 }
 
-export async function getCurrentUser(): Promise<AuthenticatedUser | undefined> {
+// Layouts and pages both ask for the user; cache() runs the session lookup once per request.
+export const getCurrentUser = cache(async (): Promise<AuthenticatedUser | undefined> => {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get(sessionCookie)?.value;
   if (!sessionId) return undefined;
@@ -237,7 +239,7 @@ export async function getCurrentUser(): Promise<AuthenticatedUser | undefined> {
 
   await query("delete from sessions where expires_at < now() or created_at <= now() - ($1::integer * interval '1 hour')", [sessionHours]).catch(() => undefined);
   return mapUser(user);
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();
