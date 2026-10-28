@@ -193,6 +193,12 @@ body::before {
   font-size: 0.65rem;
 }
 
+@layer components {
+  .form-control {
+    @apply min-h-11 w-full rounded-[var(--radius-md)] border border-border px-3 text-base text-[var(--color-text)] shadow-[var(--shadow-sm)] transition focus:border-brand focus:outline-none focus:ring-4 focus:ring-[var(--color-brand-subtle)] disabled:text-[var(--color-text-subtle)] sm:min-h-9 sm:text-xs;
+  }
+}
+
 html[data-theme="dark"] .bg-white {
   background-color: var(--color-panel-strong) !important;
 }

@@ -33,7 +33,6 @@ De lokale database leverde twaalf trainingsmaanden, dertien historische punten i
 
 Een volgende modelversie moet historische peildatums naspelen met uitsluitend de toen beschikbare gegevens. Vergelijk met een eenvoudige historische basislijn, meet absolute bedragfouten en datumfouten apart, en toets hoe vaak een getoond bereik de werkelijke uitkomst omvat. Pas daarna kunnen een nauwkeuriger model en een kanspercentage verantwoord worden gekozen.
 
-
 ## Vervolg uitgevoerd: rekencontract 1.1.0
 
 Onderstaande wijzigingen vervangen de openstaande onderdelen van de eerste controle. De eerdere beschrijving blijft staan als vastlegging van het gevonden gedrag.
@@ -85,4 +84,4 @@ Bij een nieuwe controle van Vandaag bleek de grens “Budgetcategorieën zonder 
 
 - Een vaste last die vóór de horizon twee keer valt (bijvoorbeeld vierwekelijks), telt in Vandaag één keer; de Vooruit-planning telt beide termijnen. Op de lokale dataset komt dit nu niet voor.
 - Uitgaven zonder categorie tellen niet mee in het historische tempo.
-- De betaaldagregel heeft nog geen eigen regressietest, omdat de logica in de databasefunctie zit.
+- De betaaldagregel staat inmiddels als `nextPlannedIncomeDate` in `recurrence.ts` en heeft eigen regressietests (nog niet geboekt, wel geboekt, vierwekelijks en latere inkomensdatum).

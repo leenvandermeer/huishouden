@@ -9,8 +9,11 @@ export function FieldLabel({ className, children, ...props }: LabelHTMLAttribute
   );
 }
 
-const controlClass =
-  "min-h-11 w-full rounded-[var(--radius-md)] border border-border bg-white px-3 text-base text-[var(--color-text)] shadow-[var(--shadow-sm)] transition focus:border-brand focus:bg-white focus:outline-none focus:ring-4 focus:ring-[var(--color-brand-subtle)] disabled:bg-[var(--color-surface)] disabled:text-[var(--color-text-subtle)] sm:min-h-9 sm:text-xs";
+// Styles live in globals.css (.form-control): pages render hundreds of controls and the
+// full utility string was repeated in both the HTML and the RSC payload. The background
+// utilities stay literal: the dark theme overrides them by class name, and a layered
+// disabled background would lose to the bg-white utility.
+const controlClass = "form-control bg-white focus:bg-white disabled:bg-[var(--color-surface)]";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...props }, ref) {
   return <input ref={ref} className={cn(controlClass, className)} {...props} />;

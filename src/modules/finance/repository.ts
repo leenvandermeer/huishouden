@@ -1,10 +1,9 @@
-import { recurringOccurrence } from "./recurrence";
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { getDatabaseUrl, getPool, query } from "../../server/db/pool";
 import { defaultCategories } from "./default-categories";
 import { estimateFixedExpenseDate } from "./fixed-expense-date";
-import { detectRecurringFrequency, normalizedSupplierKey } from "./recurrence";
+import { detectRecurringFrequency, nextPlannedIncomeDate, normalizedSupplierKey, rollDateForward } from "./recurrence";
 import { marketCategories, marketMappingRules } from "./market-mapping";
 import type { Account, AnnualBudget, Budget, CategorizationRule, CategorizationRuleScope, Category, FixedExpense, FixedExpenseCandidate, RecurringIncome, SavingsPot, Transaction } from "./types";
 import { estimateBudgetExpensesUntil } from "./forecast-budget";
@@ -876,10 +875,7 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
   ]);
 
   const skippedEventKeys = new Set(skippedEventResult.rows.map((row) => row.event_key));
-  // Once today's structural income is booked it is part of the bank balance, so a
-  // planned income due today can no longer be the horizon.
   const incomeReceivedToday = incomeHistoryResult.rows.some((row) => row.booked_on === asOf);
-  const plannedIncomeMinimum = incomeReceivedToday ? nextDay(asOf) : asOf;
 
   const plannedIncomes: IncomeForecastSource[] = plannedIncomeResult.rows.map((row) => ({
     id: row.id,
@@ -888,7 +884,7 @@ async function getDashboardCashflowForecast(paymentBalance: number): Promise<Das
     amount: Number(row.amount),
     minimumAmount: Number(row.amount),
     maximumAmount: Number(row.amount),
-    date: rollDateForward(row.next_expected_on, row.frequency, plannedIncomeMinimum),
+    date: nextPlannedIncomeDate(row.next_expected_on, row.frequency, asOf, incomeReceivedToday),
     frequency: row.frequency,
     estimated: false,
     status: "manual" as const,
@@ -1044,18 +1040,6 @@ export function inferRecurringIncomes(
 
 function amsterdamDateString() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
-
-function rollDateForward(date: string, frequency: FixedExpense["frequency"], minimum: string, alwaysAdvance = false) {
-  let occurrence = alwaysAdvance ? 1 : 0;
-  let candidate = recurringOccurrence(date, frequency, occurrence);
-  while (candidate < minimum) candidate = recurringOccurrence(date, frequency, ++occurrence);
-  return candidate;
-}
-
-function nextDay(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
 }
 
 function daysBetween(start: string, end: string) {

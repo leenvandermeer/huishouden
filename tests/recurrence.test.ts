@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { detectRecurringFrequency, normalizedSupplierKey } from "../src/modules/finance/recurrence";
+import { detectRecurringFrequency, nextPlannedIncomeDate, normalizedSupplierKey } from "../src/modules/finance/recurrence";
 import { monthlyAmount } from "../src/modules/finance/reporting";
 
 test("herkent een vierwekelijks patroon in de Basic Fit-transacties", () => {
@@ -34,4 +34,18 @@ test("rekent een vierwekelijkse betaling om met dertien termijnen per jaar", () 
     amount: 24,
     frequency: "vierwekelijks",
   }), 26);
+});
+
+test("gepland inkomen op de peildatum blijft de horizon zolang het nog niet geboekt is", () => {
+  assert.equal(nextPlannedIncomeDate("2026-10-24", "maandelijks", "2026-10-24", false), "2026-10-24");
+});
+
+test("gepland inkomen schuift door zodra vandaag structureel inkomen is geboekt", () => {
+  assert.equal(nextPlannedIncomeDate("2026-10-24", "maandelijks", "2026-10-24", true), "2026-11-24");
+  assert.equal(nextPlannedIncomeDate("2026-10-03", "vierwekelijks", "2026-10-31", true), "2026-11-28");
+});
+
+test("geboekt inkomen vandaag verschuift een latere inkomensdatum niet", () => {
+  assert.equal(nextPlannedIncomeDate("2026-11-24", "maandelijks", "2026-10-24", true), "2026-11-24");
+  assert.equal(nextPlannedIncomeDate("2026-08-24", "maandelijks", "2026-10-25", true), "2026-11-24");
 });

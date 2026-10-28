@@ -58,3 +58,24 @@ export function recurringOccurrence(anchor: string, frequency: Frequency, occurr
   target.setUTCDate(Math.min(day, lastDay));
   return target.toISOString().slice(0, 10);
 }
+
+/** First occurrence on or after `minimum`; `alwaysAdvance` skips the anchor itself. */
+export function rollDateForward(anchor: string, frequency: Frequency, minimum: string, alwaysAdvance = false) {
+  let occurrence = alwaysAdvance ? 1 : 0;
+  let candidate = recurringOccurrence(anchor, frequency, occurrence);
+  while (candidate < minimum) candidate = recurringOccurrence(anchor, frequency, ++occurrence);
+  return candidate;
+}
+
+/**
+ * Once today's structural income is booked it is part of the bank balance, so a
+ * planned income due today moves to its next occurrence instead of being the horizon.
+ */
+export function nextPlannedIncomeDate(nextExpectedOn: string, frequency: Frequency, asOf: string, incomeBookedToday: boolean) {
+  const minimum = incomeBookedToday ? fromUtcTime(toUtcTime(asOf) + dayMs) : asOf;
+  return rollDateForward(nextExpectedOn, frequency, minimum);
+}
+
+function fromUtcTime(time: number) {
+  return new Date(time).toISOString().slice(0, 10);
+}
