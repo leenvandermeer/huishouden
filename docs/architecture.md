@@ -14,6 +14,8 @@ Huishouden is een Next.js-webapplicatie met TypeScript, React en PostgreSQL. De 
 | Schema en migraties | `infra/sql/migrations` | Tabellen en incrementele schemawijzigingen |
 | Beheer | `scripts` | Installatie, controles, release en herstel |
 
+De interface volgt de Oceanco-huisstijl. Kleuren zijn tokens in `src/app/globals.css`, typografie en schil staan in `src/app/house-style.css`, en iedere pagina begint met `PageHeader` met optionele kerncijfers (`StatsStrip`). Zie [ontwerp en huisstijl](ontwerp-en-huisstijl.md).
+
 UI-componenten bevatten geen SQL. De repository voert databasebewerkingen uit; domeinfuncties maken financiële berekeningen controleerbaar en testbaar. Geldbedragen worden in PostgreSQL als numerieke waarden opgeslagen.
 
 ## Gegevensmodel

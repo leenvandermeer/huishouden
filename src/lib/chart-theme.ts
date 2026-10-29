@@ -1,6 +1,12 @@
 export interface ChartTheme {
   accent: string;
   border: string;
+  /** Status colours: reserved for state (good, attention, problem), never for plain series. */
+  error: string;
+  grid: string;
+  /** Ordered slate ramp for series, strongest first. */
+  series: string[];
+  warning: string;
   info: string;
   invest: string;
   muted: string;
@@ -17,6 +23,10 @@ export function readChartTheme(element: Element): ChartTheme {
   return {
     accent: color("--color-accent"),
     border: color("--color-border"),
+    error: color("--color-error"),
+    grid: color("--chart-grid"),
+    series: [1, 2, 3, 4, 5].map((index) => color(`--chart-${index}`)),
+    warning: color("--color-warning"),
     info: color("--color-info"),
     invest: color("--color-invest"),
     muted: color("--color-text-muted"),

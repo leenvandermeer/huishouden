@@ -20,31 +20,15 @@ export default async function WealthPage() {
         eyebrow="Vermogen"
         title="Je financiële geheel"
         description={`Stand per ${formatDate(wealth.asOf)}. Iedere euro is terug te voeren naar een rekening.`}
+        stats={[
+          { label: "Netto vermogen", value: formatCurrency(wealth.netWorth), detail: `Bezittingen ${formatCurrency(wealth.assets)} min ${formatCurrency(wealth.debt)} schuld`, lead: true },
+          { label: "Direct beschikbaar", value: formatCurrency(wealth.directAvailable), detail: "Betaalrekeningen" },
+          { label: "Gereserveerd", value: formatCurrency(wealth.reserved), detail: "Spaarrekeningen" },
+          { label: "Lange termijn", value: formatCurrency(wealth.longTerm), detail: "Beleggingen" },
+          { label: "Sinds vorige maand", value: monthlyChange == null ? "—" : `${monthlyChange > 0 ? "+" : ""}${formatCurrency(monthlyChange)}`, detail: wealth.debt ? `Schulden ${formatCurrency(-wealth.debt)}` : "Geen schulden", tone: monthlyChange != null && monthlyChange < 0 ? "risk" : undefined },
+        ]}
         actions={<div className="flex flex-wrap gap-2">{canExport ? <ButtonLink href="/api/export/wealth" variant="secondary" size="sm"><Download aria-hidden="true" size={14} /> Exporteer CSV</ButtonLink> : null}<ButtonLink href="/rekeningen" variant="secondary" size="sm">Rekeningen beheren</ButtonLink></div>}
       />
-
-      <section className="brand-summary-hero mb-4 overflow-hidden rounded-[1.5rem] border border-[color:rgba(23,79,70,0.2)] bg-[var(--color-brand-fill)] text-[var(--color-brand-fill-text)] shadow-[var(--shadow-md)]">
-        <div className="grid gap-6 p-5 md:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] md:p-7">
-          <div>
-            <span className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-brand-fill-muted)]"><BadgeEuro aria-hidden="true" size={15} /> Netto vermogen</span>
-            <strong className="money-value mt-3 block text-[clamp(2.6rem,7vw,5.4rem)] leading-none tracking-[-0.06em]">{formatCurrency(wealth.netWorth)}</strong>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-[var(--color-brand-fill-muted)]">Bezittingen van {formatCurrency(wealth.assets)}, verminderd met {formatCurrency(wealth.debt)} schuld.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-[var(--color-brand-fill-divider)]">
-            <HeroMetric label="Direct beschikbaar" value={wealth.directAvailable} />
-            <HeroMetric label="Gereserveerd" value={wealth.reserved} />
-            <HeroMetric label="Lange termijn" value={wealth.longTerm} />
-            <HeroMetric label="Sinds vorige maand" value={monthlyChange} signed />
-          </div>
-        </div>
-      </section>
-
-      <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <BreakdownCard icon={<WalletCards size={18} />} label="Direct beschikbaar" value={wealth.directAvailable} detail="Betaalrekeningen" tone="green" />
-        <BreakdownCard icon={<PiggyBank size={18} />} label="Gereserveerd" value={wealth.reserved} detail="Spaarrekeningen" tone="purple" />
-        <BreakdownCard icon={<TrendingUp size={18} />} label="Lange termijn" value={wealth.longTerm} detail="Beleggingen" tone="orange" />
-        <BreakdownCard icon={<Banknote size={18} />} label="Schulden" value={wealth.debt ? -wealth.debt : 0} detail="Telt af van vermogen" tone="neutral" />
-      </section>
 
       <section className="mb-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="rounded-[1.25rem] border border-border bg-white p-4 shadow-[var(--shadow-sm)] md:p-5">
@@ -90,12 +74,3 @@ function latestAccountDate(account: WealthAccount) {
   return [account.balanceDate, importedOn].filter((value): value is string => Boolean(value)).sort().at(-1);
 }
 
-function HeroMetric({ label, value, signed = false }: { label: string; value?: number; signed?: boolean }) {
-  const display = value == null ? "—" : `${signed && value > 0 ? "+" : ""}${formatCurrency(value)}`;
-  return <div className="bg-[var(--color-brand-fill-tile)] p-3.5"><span className="text-[0.68rem] font-semibold text-[var(--color-brand-fill-muted)]">{label}</span><strong className="money-value mt-1.5 block text-lg text-[var(--color-brand-fill-text)]">{display}</strong></div>;
-}
-
-function BreakdownCard({ icon, label, value, detail, tone }: { icon: React.ReactNode; label: string; value: number; detail: string; tone: "green" | "purple" | "orange" | "neutral" }) {
-  const colors = { green: "bg-emerald-50 text-emerald-700", purple: "bg-violet-50 text-violet-700", orange: "bg-orange-50 text-orange-700", neutral: "bg-[var(--color-surface)] text-brand" };
-  return <article className="rounded-[1.1rem] border border-border bg-white p-4 shadow-[var(--shadow-sm)]"><span className={`grid h-9 w-9 place-items-center rounded-xl ${colors[tone]}`}>{icon}</span><p className="mt-3 text-xs font-semibold text-[var(--color-text-muted)]">{label}</p><strong className="money-value mt-1 block text-xl text-brand">{formatCurrency(value)}</strong><small className="mt-1 block text-[var(--color-text-subtle)]">{detail}</small></article>;
-}

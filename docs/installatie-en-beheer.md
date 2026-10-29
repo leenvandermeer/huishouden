@@ -36,6 +36,16 @@ De webapp is lokaal beschikbaar op `http://localhost:3001`. De CLI-scripts lezen
 
 Voor dagelijks gebruik volstaat `bash scripts/dev.sh`. Een andere ontwikkelpoort kan met `bash scripts/dev.sh 3005` worden gekozen. Dit script stopt processen op de gekozen poort en een eventueel draaiende lokale appcontainer.
 
+## Ontwikkelen in Docker
+
+De app kan ook volledig in Docker draaien, met automatisch herladen bij wijzigingen:
+
+```bash
+docker compose --env-file .env.local --profile dev up -d dev
+```
+
+De ontwikkelomgeving is beschikbaar op `http://localhost:3020`. Een andere poort stel je in met `DEV_HOST_PORT`. De container gebruikt dezelfde lokale database als `scripts/dev.sh`. Na het toevoegen van een npm-pakket installeer je dat ook in de container, met `docker exec huishouden-dev npm install`. Stoppen gaat met `docker compose --env-file .env.local --profile dev stop dev`.
+
 ## Optionele instellingen
 
 `RABOBANK_SAVINGS_IBANS` kan privé een met dubbele punten gescheiden lijst spaarrekeningen bevatten voor importherkenning. Het lege voorbeeld bevat geen echte rekeningnummers. Controleer rekeningtypen ook in de importpreview.

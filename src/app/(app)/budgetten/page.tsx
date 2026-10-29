@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { AlertCircle, CalendarDays, Copy, Sparkles, Trash2, WalletCards } from "lucide-react";
+import { AlertCircle, CalendarDays, Copy, Trash2 } from "lucide-react";
 import { ProgressBar } from "@/components/finance/progress-bar";
 import { CashflowBudgetBridge } from "@/components/finance/cashflow-budget-bridge";
 import { ReadonlyNotice } from "@/components/finance/readonly-notice";
-import { Button, ButtonLink, FieldLabel, Input, PageHeader, PeriodPager, Select, StatusBadge, SubmitButton } from "@/components/ui";
+import { Button, ButtonLink, FieldLabel, Input, PageHeader, PeriodPager, Select, StatusBadge, SubmitButton, type StatItem } from "@/components/ui";
 import { formatCurrency, formatMonthLabel } from "@/lib/format";
 import { applyBudgetSuggestions, copyBudget, deleteAnnualBudget, deleteBudget, saveAnnualBudget, saveBudget } from "@/modules/finance/actions";
 import { getAnnualBudgets, getBudgets, getFinanceDataset } from "@/modules/finance/data-source";
@@ -58,6 +58,26 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
   const totalActual = selectedCashflow?.spendableExpenses ?? budgets.reduce((sum, budget) => sum + budget.actual, 0);
   const unplannedActual = Math.max(totalActual - budgets.reduce((sum, budget) => sum + budget.actual, 0), 0);
   const cashflowAdvice = buildCashflowBudgetAdvice({ historicalNet: selectedCashflow?.spendableNet, planning: planning.model, budgets, categories: dataset.categories });
+  const annualPlanned = annualBudgets.reduce((sum, budget) => sum + budget.planned, 0);
+  const annualActual = annualBudgets.reduce((sum, budget) => sum + budget.actual, 0);
+  const annualRemaining = annualPlanned - annualActual;
+  const stats: StatItem[] = selectedView === "jaar"
+    ? [
+        { label: "Nog beschikbaar", value: formatCurrency(annualRemaining), detail: `van het jaarbudget ${selectedYear}`, lead: true, tone: annualRemaining < 0 ? "risk" : undefined },
+        { label: "Jaarbudget", value: formatCurrency(annualPlanned), detail: `${annualBudgets.length} ${annualBudgets.length === 1 ? "categorie" : "categorieën"}` },
+        { label: "Besteed dit jaar", value: formatCurrency(annualActual), detail: "Uit transacties" },
+      ]
+    : [
+        {
+          label: guidance.isCurrentMonth ? "Vrij te besteden deze week" : "Gemiddeld vrij per week",
+          value: guidance.hasVariableBudgets ? formatCurrency(guidance.amount) : "—",
+          detail: guidance.hasVariableBudgets ? `${formatCurrency(Math.max(guidance.remainingThisMonth, 0))} over voor variabele uitgaven · ${guidance.daysCovered} ${guidance.daysCovered === 1 ? "dag" : "dagen"}` : "Voeg budgetten toe om een weekbedrag te zien",
+          lead: true,
+        },
+        { label: "Gepland", value: formatCurrency(totalPlanned), detail: formatMonthLabel(selectedMonth) },
+        { label: "Werkelijk geld eruit", value: formatCurrency(totalActual), detail: totalPlanned > 0 ? `${Math.round((totalActual / totalPlanned) * 100)}% van gepland` : undefined, tone: totalPlanned > 0 && totalActual > totalPlanned ? "risk" : undefined },
+        { label: "Uitgaven zonder budget", value: formatCurrency(unplannedActual), detail: unplannedActual > 0 ? "Geen budget ingesteld" : "Alles valt onder een budget", tone: unplannedActual > 0 ? "risk" : undefined },
+      ];
 
   return (
     <>
@@ -65,6 +85,7 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
         eyebrow="Budgetten"
         title={selectedView === "overzicht" ? "Budgetten" : selectedView === "jaar" ? "Jaarbudgetten" : "Budget aanpassen"}
         description={canMutate ? (selectedView === "overzicht" ? "Zie wat je wilde uitgeven en wat er nog over is." : selectedView === "jaar" ? "Bewaak grotere uitgaven en reserveringen over een heel kalenderjaar." : "Kies een bedrag per categorie.") : "Je kunt de budgetten bekijken, maar niet aanpassen."}
+        stats={stats}
         actions={(
           selectedView === "jaar" ? <PeriodPager
             label={String(selectedYear)}
@@ -81,26 +102,26 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
           />
         )}
       />
-      {!canMutate ? <div className="mb-3"><ReadonlyNotice /></div> : null}
+      {!canMutate ? <div className="mb-6"><ReadonlyNotice /></div> : null}
 
       {copied ? (
-        <div className="mb-3 rounded-md border border-border bg-[var(--color-brand-subtle)] p-3 text-xs text-brand">
+        <div className="mb-6 border border-border bg-[var(--color-panel-strong)] p-4 text-sm text-[var(--color-text)]">
           Budgetplan gekopieerd: {copied} categorieen overgenomen{copiedSource ? ` van ${copiedSource}` : ""} naar {selectedMonth}.
         </div>
       ) : null}
       {params.applied ? (
-        <div className="mb-3 rounded-md border border-border bg-[var(--color-success-subtle)] p-3 text-xs text-[var(--color-success)]">
+        <div className="mb-6 border border-border bg-[var(--color-panel-strong)] p-4 text-sm text-[var(--color-success)]">
           {params.applied === "0" ? "Alle bruikbare voorstellen stonden al ingesteld." : `${params.applied} budgetvoorstellen zijn toegevoegd.`}
         </div>
       ) : null}
 
-      <section className="mb-3 rounded-[var(--radius-lg)] border border-border bg-[var(--color-surface)] p-3">
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
-          {selectedView === "jaar" ? <form action="/budgetten" className="grid gap-2 sm:grid-cols-[minmax(10rem,14rem)_auto] sm:items-end">
+      <section className="mb-8 border border-border bg-[var(--color-panel-strong)] p-5">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
+          {selectedView === "jaar" ? <form action="/budgetten" className="grid gap-2 sm:grid-cols-[minmax(10rem,14rem)_max-content] sm:items-end">
             <input type="hidden" name="view" value="jaar" />
             <div><FieldLabel htmlFor="selectedYear">Budgetjaar</FieldLabel><Select id="selectedYear" name="year" defaultValue={String(selectedYear)}>{years.map((year) => <option key={year} value={year}>{year}</option>)}</Select></div>
             <Button type="submit" variant="secondary"><CalendarDays aria-hidden="true" size={14} /> Tonen</Button>
-          </form> : <form action="/budgetten" className="grid gap-2 sm:grid-cols-[minmax(10rem,14rem)_auto] sm:items-end">
+          </form> : <form action="/budgetten" className="grid gap-2 sm:grid-cols-[minmax(10rem,14rem)_max-content] sm:items-end">
             <input type="hidden" name="view" value={selectedView} />
             <input type="hidden" name="suggestionMonths" value={suggestionMonths} />
             <div>
@@ -128,7 +149,7 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
               <Button type="submit" size="sm" variant="secondary">Bereken</Button>
             </form> : null}
             {canMutate ? (
-              <nav className="flex rounded-md border border-border bg-white p-1 text-xs font-semibold shadow-[var(--shadow-sm)]" aria-label="Budgetweergave">
+              <nav className="flex border border-border bg-[var(--color-panel-strong)] p-1 text-[0.68rem] uppercase tracking-[0.16em]" aria-label="Budgetweergave">
                 <ViewLink href={budgetMonthHref(selectedMonth, "overzicht", suggestionMonths)} active={selectedView === "overzicht"}>Overzicht</ViewLink>
                 <ViewLink href={budgetMonthHref(selectedMonth, "instellingen", suggestionMonths)} active={selectedView === "instellingen"}>Instellingen</ViewLink>
                 <ViewLink href={`/budgetten?view=jaar&year=${selectedYear}`} active={selectedView === "jaar"}>Jaar</ViewLink>
@@ -148,45 +169,31 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
         />
       ) : <>
 
-      <section className="budget-week mb-3" aria-labelledby="week-budget-title">
-        <div className="budget-week__main">
-          <span className="budget-week__icon"><WalletCards aria-hidden="true" size={20} /></span>
-          <div>
-            <p>{guidance.isCurrentMonth ? "Vrij te besteden deze week" : "Gemiddeld vrij per week"}</p>
-            <h2 id="week-budget-title">{guidance.hasVariableBudgets ? formatCurrency(guidance.amount) : "Nog niet berekend"}</h2>
-            <span>{guidance.hasVariableBudgets ? `${formatCurrency(Math.max(guidance.remainingThisMonth, 0))} over voor variabele uitgaven deze maand.` : "Voeg je voorgestelde budgetten toe om een weekbedrag te zien."}</span>
-          </div>
-        </div>
-        {guidance.hasVariableBudgets ? <p className="budget-week__explain">Verdeeld over {guidance.daysCovered} {guidance.daysCovered === 1 ? "dag" : "dagen"}. Vaste lasten tellen niet mee.</p> : null}
-        {guidance.warnings.length ? (
-          <div className="budget-week__warnings">
+      {guidance.warnings.length ? (
+        <section className="mb-8" aria-label="Signalen over je budgetten">
+          <div className="grid gap-4 md:grid-cols-2">
             {guidance.warnings.map((warning) => (
-              <Link key={warning.title} href={`/transacties?month=${selectedMonth}&kind=uitgaven&categoryId=${encodeURIComponent(warning.categoryId ?? "")}`}>
-                <AlertCircle aria-hidden="true" size={16} />
-                <span><strong>{warning.title}</strong><small>{warning.detail}</small></span>
+              <Link key={warning.title} href={`/transacties?month=${selectedMonth}&kind=uitgaven&categoryId=${encodeURIComponent(warning.categoryId ?? "")}`} className="flex min-w-0 items-center gap-3 border border-border bg-[var(--color-panel-strong)] p-5 transition-colors hover:border-[var(--color-text-muted)]">
+                <AlertCircle aria-hidden="true" size={16} className="shrink-0 text-[var(--color-warning)]" />
+                <span className="grid min-w-0"><strong className="truncate text-sm font-medium text-[var(--color-text)]">{warning.title}</strong><small className="mt-0.5 truncate text-xs text-[var(--color-text-muted)]">{warning.detail}</small></span>
               </Link>
             ))}
           </div>
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
-      <CashflowBudgetBridge advice={cashflowAdvice} />
-
-      <section className="mb-3 grid gap-3 sm:grid-cols-3">
-        <SummaryCard label="Gepland" value={formatCurrency(totalPlanned)} />
-        <SummaryCard label="Werkelijk geld eruit" value={formatCurrency(totalActual)} />
-        <SummaryCard label="Uitgaven zonder budget" value={formatCurrency(unplannedActual)} />
-      </section>
+      <div className="mb-8">
+        <CashflowBudgetBridge advice={cashflowAdvice} />
+      </div>
 
       {selectedView === "overzicht" ? (
         <>
         {missingVariableSuggestions.length ? (
-          <section className="budget-proposals mb-3" aria-labelledby="budget-proposals-title">
-            <div className="budget-proposals__intro">
-              <span><Sparkles aria-hidden="true" size={18} /></span>
-              <div>
-                <h2 id="budget-proposals-title">Voorstellen op basis van je uitgaven</h2>
-                <p>Gebaseerd op je vorige {suggestionMonths} maanden. Jij beslist wat je gebruikt.</p>
+          <section className="mb-8" aria-labelledby="budget-proposals-title">
+            <div className="section-head">
+              <div className="grid gap-2">
+                <h2 id="budget-proposals-title">Voorstellen</h2>
+                <p>Gebaseerd op je uitgaven van de vorige {suggestionMonths} maanden. Jij beslist wat je gebruikt.</p>
               </div>
               {canMutate ? (
                 <form action={applyBudgetSuggestions}>
@@ -196,13 +203,13 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
                 </form>
               ) : null}
             </div>
-            <div className="budget-proposals__list">
+            <div className="divide-y divide-border border border-border bg-[var(--color-panel-strong)]">
               {missingVariableSuggestions.slice(0, 3).map((suggestion) => (
-                <article key={suggestion.categoryId}>
-                  <span><strong>{getCategoryName(dataset.categories, suggestion.categoryId)}</strong><small>{suggestion.sampleSize} eerdere maanden</small></span>
-                  <strong className="money-value">{formatCurrency(suggestion.amount)}<small> per maand</small></strong>
+                <article key={suggestion.categoryId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                  <span className="grid min-w-0"><strong className="truncate text-sm font-medium text-[var(--color-text)]">{getCategoryName(dataset.categories, suggestion.categoryId)}</strong><small className="mt-0.5 text-xs text-[var(--color-text-muted)]">{suggestion.sampleSize} eerdere maanden</small></span>
+                  <strong className="money-value grid text-right text-lg font-light text-[var(--color-text)]">{formatCurrency(suggestion.amount)}<small className="text-[0.62rem] font-normal uppercase tracking-[0.22em] text-[var(--color-text-muted)]">per maand</small></strong>
                   {canMutate ? (
-                    <form action={saveBudget}>
+                    <form action={saveBudget} className="col-span-2 sm:col-span-1">
                       <input type="hidden" name="month" value={selectedMonth} />
                       <input type="hidden" name="categoryId" value={suggestion.categoryId} />
                       <input type="hidden" name="planned" value={String(suggestion.amount).replace(".", ",")} />
@@ -214,31 +221,31 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
             </div>
           </section>
         ) : null}
-        <section className="rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
-            <div>
-              <h2 className="text-xs font-semibold text-brand">Budgetten {formatMonthLabel(selectedMonth)}</h2>
-              <p className="mt-0.5 text-[0.68rem] text-[var(--color-text-subtle)]">{canMutate ? "Bedragen aanpassen doe je via de instellingenweergave." : "Alleen bekijken. Wijzigen is verborgen voor alleen-lezen gebruikers."}</p>
+        <section className="mb-8">
+          <div className="section-head">
+            <div className="grid gap-2">
+              <h2>Budgetten {formatMonthLabel(selectedMonth)}</h2>
+              <p>{canMutate ? "Bedragen aanpassen doe je via de instellingenweergave." : "Alleen bekijken. Wijzigen is verborgen voor alleen-lezen gebruikers."}</p>
             </div>
             {canMutate ? <ButtonLink href={budgetMonthHref(selectedMonth, "instellingen", suggestionMonths)} size="sm">Instellingen</ButtonLink> : null}
           </div>
-          <div className="grid gap-3 p-3">
+          <div className="grid gap-4">
             {budgetGroups.length ? (
               budgetGroups.map((group) => (
-                <details key={group.id} className="rounded-md border border-border bg-[var(--color-surface)]" open={budgetGroups.length <= 4}>
-                  <summary className="grid cursor-pointer list-none gap-2 p-3 marker:content-none sm:grid-cols-[minmax(0,1fr)_repeat(3,auto)] sm:items-center">
-                    <strong className="text-sm text-brand">{group.label}<small className="ml-2 font-normal text-[var(--color-text-muted)]">{group.budgets.length} {group.budgets.length === 1 ? "categorie" : "categorieën"}</small></strong>
-                    <span className="text-xs text-[var(--color-text-muted)]">Budget <strong className="text-brand">{formatCurrency(group.planned)}</strong></span>
-                    <span className="text-xs text-[var(--color-text-muted)]">Besteed <strong className="text-brand">{formatCurrency(group.actual)}</strong></span>
+                <details key={group.id} className="border border-border bg-[var(--color-panel-strong)]" open={budgetGroups.length <= 4}>
+                  <summary className="grid cursor-pointer list-none gap-3 p-5 marker:content-none sm:grid-cols-[minmax(0,1fr)_repeat(3,auto)] sm:items-center sm:gap-6">
+                    <strong className="text-sm font-medium text-[var(--color-text)]">{group.label}<small className="ml-2 font-normal text-[var(--color-text-muted)]">{group.budgets.length} {group.budgets.length === 1 ? "categorie" : "categorieën"}</small></strong>
+                    <span className="text-xs text-[var(--color-text-muted)]">Budget <strong className="money-value font-medium text-[var(--color-text)]">{formatCurrency(group.planned)}</strong></span>
+                    <span className="text-xs text-[var(--color-text-muted)]">Besteed <strong className="money-value font-medium text-[var(--color-text)]">{formatCurrency(group.actual)}</strong></span>
                     <StatusBadge tone={group.remaining < 0 ? "warning" : "success"}>{group.remaining < 0 ? `${formatCurrency(Math.abs(group.remaining))} over` : `${formatCurrency(group.remaining)} over`}</StatusBadge>
                   </summary>
-                  <div className="grid gap-2 border-t border-border p-3 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-4 border-t border-border p-5 md:grid-cols-2 xl:grid-cols-3">
                     {group.budgets.map((budget) => <BudgetOverviewCard key={`${budget.month}-${budget.categoryId}`} label={getCategoryName(dataset.categories, budget.categoryId)} budget={budget} suggestion={suggestionByCategory.get(budget.categoryId)} />)}
                   </div>
                 </details>
               ))
             ) : (
-              <p className="text-xs text-[var(--color-text-muted)]">Nog geen budgetten voor deze maand.</p>
+              <p className="border border-dashed border-border p-6 text-sm text-[var(--color-text-muted)]">Nog geen budgetten voor deze maand.</p>
             )}
           </div>
         </section>
@@ -247,8 +254,8 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
 
       {selectedView === "instellingen" ? (
         <>
-      <section className="mb-3 rounded-[var(--radius-lg)] border border-border bg-white p-3 shadow-[var(--shadow-sm)]">
-        <form action="/budgetten" className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end xl:max-w-xl">
+      <section className="mb-8 border border-border bg-[var(--color-panel-strong)] p-5 md:p-6">
+        <form action="/budgetten" className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end xl:max-w-xl">
           <input type="hidden" name="month" value={selectedMonth} />
           <input type="hidden" name="view" value="instellingen" />
           <input type="hidden" name="suggestionMonths" value={suggestionMonths} />
@@ -269,10 +276,10 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
           </Button>
         </form>
         {copyPreview ? (
-          <div className="mt-4 rounded-md border border-border bg-[var(--color-surface)] p-3">
+          <div className="mt-6 border border-border bg-[var(--color-surface)] p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-brand">Controle vóór kopiëren</h3>
+                <h3 className="text-sm font-medium text-[var(--color-text)]">Controle vóór kopiëren</h3>
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                   {copyPreview.newCount} nieuw · {copyPreview.conflictCount} overschrijven · {copyPreview.sameCount} ongewijzigd · {copyPreview.invalidCount} overgeslagen
                 </p>
@@ -288,11 +295,11 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
               </form>
             </div>
             {copyPreview.conflictCount || copyPreview.invalidCount ? (
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
                 {copyPreview.rows.filter((row) => row.status === "conflict" || row.status === "invalid").map((row) => (
-                  <div key={row.categoryId} className="rounded-md border border-border bg-white p-2 text-xs">
+                  <div key={row.categoryId} className="border border-border bg-[var(--color-panel-strong)] p-3 text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <strong className="text-brand">{getCategoryName(dataset.categories, row.categoryId)}</strong>
+                      <strong className="font-medium text-[var(--color-text)]">{getCategoryName(dataset.categories, row.categoryId)}</strong>
                       <StatusBadge tone={row.status === "conflict" ? "warning" : "neutral"}>{row.status === "conflict" ? "Wordt overschreven" : "Overgeslagen"}</StatusBadge>
                     </div>
                     <p className="mt-1 text-[var(--color-text-muted)]">Bron {formatCurrency(row.sourceAmount)}{row.targetAmount != null ? ` · Huidig ${formatCurrency(row.targetAmount)}` : ""}</p>
@@ -304,14 +311,14 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
         ) : null}
       </section>
 
-      <section className="mb-3">
-        <form action={saveBudget} className="rounded-[var(--radius-lg)] border border-border bg-white p-3 shadow-[var(--shadow-sm)]">
+      <section className="mb-8">
+        <div className="section-head">
+          <h2>Nieuw budget</h2>
+          <p>Voor {formatMonthLabel(selectedMonth)} · {newBudgetCategories.length} categorieen beschikbaar.</p>
+        </div>
+        <form action={saveBudget} className="border border-border bg-[var(--color-panel-strong)] p-5 md:p-6">
           <input type="hidden" name="month" value={selectedMonth} />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-brand">Nieuw budget voor {formatMonthLabel(selectedMonth)}</h2>
-            <span className="text-xs font-semibold text-[var(--color-text-muted)]">{newBudgetCategories.length} categorieen beschikbaar</span>
-          </div>
-          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_auto_auto] md:items-end">
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem_auto_auto] md:items-end">
             <div>
               <FieldLabel htmlFor="categoryId">Categorie</FieldLabel>
               <Select id="categoryId" name="categoryId" disabled={newBudgetCategories.length === 0}>
@@ -327,7 +334,7 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
               <FieldLabel htmlFor="planned">Budget</FieldLabel>
               <Input id="planned" name="planned" inputMode="decimal" placeholder="700,00" />
             </div>
-            <label className="flex min-h-8 items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)]">
+            <label className="flex min-h-8 items-center gap-2 text-xs text-[var(--color-text-muted)]">
               <input name="rollover" type="checkbox" /> Meenemen
             </label>
             <SubmitButton type="submit" variant="primary" pendingLabel="Aanmaken..." disabled={newBudgetCategories.length === 0}>
@@ -337,21 +344,22 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
         </form>
       </section>
 
-      <section className="rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-        <div className="border-b border-border px-3 py-2">
-          <h2 className="text-xs font-semibold text-brand">Handmatige budgetten {selectedMonth}</h2>
+      <section className="mb-8">
+        <div className="section-head">
+          <h2>Handmatige budgetten</h2>
+          <p>Bedragen, notities en meenemen voor {formatMonthLabel(selectedMonth)}.</p>
         </div>
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-border border border-border bg-[var(--color-panel-strong)]">
           {budgets.length ? (
             budgets.map((budget) => {
               const remaining = budget.planned - budget.actual;
               const usage = budget.planned > 0 ? budget.actual / budget.planned : budget.actual > 0 ? 1 : 0;
               return (
-                <article key={`${budget.month}-${budget.categoryId}`} className="grid gap-3 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(25rem,0.9fr)] xl:items-center">
+                <article key={`${budget.month}-${budget.categoryId}`} className="grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(25rem,0.9fr)] xl:items-center xl:gap-8">
                   <div>
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <h3 className="text-sm font-semibold text-brand">{getCategoryName(dataset.categories, budget.categoryId)}</h3>
+                        <h3 className="text-sm font-medium text-[var(--color-text)]">{getCategoryName(dataset.categories, budget.categoryId)}</h3>
                         <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                           {formatCurrency(remaining)} resterend
                         </p>
@@ -380,8 +388,8 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
                     {suggestionByCategory.get(budget.categoryId) ? (
                       <BudgetSuggestionNote suggestion={suggestionByCategory.get(budget.categoryId)!} />
                     ) : null}
-                    {(budget.carriedAmount ?? 0) > 0 ? <p className="mt-2 text-xs font-semibold text-[var(--color-success)]">Inclusief {formatCurrency(budget.carriedAmount ?? 0)} meegenomen uit vorige maand.</p> : null}
-                    {budget.note ? <p className="mt-2 rounded-md bg-[var(--color-surface)] p-2 text-xs leading-5 text-[var(--color-text-muted)]"><strong className="text-brand">Notitie:</strong> {budget.note}</p> : null}
+                    {(budget.carriedAmount ?? 0) > 0 ? <p className="mt-2 text-xs text-[var(--color-success)]">Inclusief {formatCurrency(budget.carriedAmount ?? 0)} meegenomen uit vorige maand.</p> : null}
+                    {budget.note ? <p className="mt-3 border-l border-border pl-3 text-xs leading-5 text-[var(--color-text-muted)]"><strong className="font-medium text-[var(--color-text)]">Notitie:</strong> {budget.note}</p> : null}
                   </div>
                   <div className="grid gap-2">
                     <form action={saveBudget} className="grid gap-2 sm:grid-cols-[9rem_minmax(12rem,1fr)_auto] sm:items-end">
@@ -396,8 +404,8 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
                         Wijzigen
                       </SubmitButton>
                       <div className="flex flex-wrap gap-4 sm:col-span-3">
-                        <label className="flex min-h-8 items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)]"><input name="rollover" type="checkbox" defaultChecked={budget.rollover} /> Meenemen naar volgende maand</label>
-                        <label className="flex min-h-8 items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)]"><input name="exceptionAccepted" type="checkbox" defaultChecked={budget.exceptionAccepted} /> Bewuste uitzondering; geen overschrijdingssignaal</label>
+                        <label className="flex min-h-8 items-center gap-2 text-xs text-[var(--color-text-muted)]"><input name="rollover" type="checkbox" defaultChecked={budget.rollover} /> Meenemen naar volgende maand</label>
+                        <label className="flex min-h-8 items-center gap-2 text-xs text-[var(--color-text-muted)]"><input name="exceptionAccepted" type="checkbox" defaultChecked={budget.exceptionAccepted} /> Bewuste uitzondering; geen overschrijdingssignaal</label>
                       </div>
                     </form>
                     {suggestionByCategory.get(budget.categoryId) ? (
@@ -418,7 +426,7 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
               );
             })
           ) : (
-            <p className="p-3 text-xs text-[var(--color-text-muted)]">Nog geen budgetten voor deze maand. Maak hierboven handmatig je eerste budget aan.</p>
+            <p className="p-6 text-sm text-[var(--color-text-muted)]">Nog geen budgetten voor deze maand. Maak hierboven handmatig je eerste budget aan.</p>
           )}
         </div>
       </section>
@@ -431,38 +439,30 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
 
 function AnnualBudgetsSection({ year, budgets, categories, availableCategories, canMutate }: { year: number; budgets: AnnualBudget[]; categories: Category[]; availableCategories: Category[]; canMutate: boolean }) {
   const categoryById = new Map(categories.map((category) => [category.id, category]));
-  const totalPlanned = budgets.reduce((sum, budget) => sum + budget.planned, 0);
-  const totalActual = budgets.reduce((sum, budget) => sum + budget.actual, 0);
-  const remaining = totalPlanned - totalActual;
   return (
-    <div className="grid gap-3">
-      <section className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard label="Jaarbudget" value={formatCurrency(totalPlanned)} />
-        <SummaryCard label="Besteed dit jaar" value={formatCurrency(totalActual)} />
-        <SummaryCard label="Nog beschikbaar" value={formatCurrency(remaining)} />
-      </section>
-      {canMutate ? <section className="rounded-[var(--radius-lg)] border border-border bg-white p-3 shadow-[var(--shadow-sm)]">
-        <form action={saveAnnualBudget} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_10rem_auto] md:items-end">
+    <div className="mb-8 grid gap-8">
+      {canMutate ? <section className="border border-border bg-[var(--color-panel-strong)] p-5 md:p-6">
+        <form action={saveAnnualBudget} className="grid gap-4 md:grid-cols-[minmax(0,1fr)_10rem_auto] md:items-end">
           <input type="hidden" name="year" value={year} />
           <div><FieldLabel htmlFor="annual-category">Categorie</FieldLabel><Select id="annual-category" name="categoryId" disabled={!availableCategories.length}>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}{category.kind === "reservering" ? " · reservering" : ""}</option>)}{!availableCategories.length ? <option value="">Alle categorieën hebben een jaarbudget</option> : null}</Select></div>
           <div><FieldLabel htmlFor="annual-planned">Bedrag voor {year}</FieldLabel><Input id="annual-planned" name="planned" inputMode="decimal" placeholder="1.200,00" /></div>
           <SubmitButton disabled={!availableCategories.length} pendingLabel="Aanmaken...">Jaarbudget toevoegen</SubmitButton>
         </form>
       </section> : null}
-      <section className="rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-        <div className="border-b border-border px-3 py-2"><h2 className="text-sm font-semibold text-brand">Jaarbudgetten {year}</h2><p className="mt-1 text-xs text-[var(--color-text-muted)]">Reserveringscategorieën blijven apart herkenbaar; werkelijk besteed komt rechtstreeks uit transacties.</p></div>
-        <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-3">
+      <section>
+        <div className="section-head"><h2>Jaarbudgetten {year}</h2><p>Reserveringscategorieën blijven apart herkenbaar; werkelijk besteed komt rechtstreeks uit transacties.</p></div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {budgets.map((budget) => {
             const category = categoryById.get(budget.categoryId);
             const budgetRemaining = budget.planned - budget.actual;
-            return <article key={budget.id} className="rounded-md border border-border bg-[var(--color-surface)] p-3">
-              <div className="flex items-start justify-between gap-2"><div><h3 className="text-sm font-semibold text-brand">{category?.name ?? budget.categoryId}</h3>{category?.kind === "reservering" ? <StatusBadge tone="info">Reservering</StatusBadge> : null}</div><StatusBadge tone={budgetRemaining < 0 ? "warning" : "success"}>{budgetRemaining < 0 ? "Overschreden" : "Op koers"}</StatusBadge></div>
-              <div className="mt-3"><ProgressBar value={budget.planned > 0 ? budget.actual / budget.planned : 0} tone={budgetRemaining < 0 ? "warning" : "brand"} /></div>
+            return <article key={budget.id} className="border border-border bg-[var(--color-panel-strong)] p-5">
+              <div className="flex items-start justify-between gap-2"><div><h3 className="text-sm font-medium text-[var(--color-text)]">{category?.name ?? budget.categoryId}</h3>{category?.kind === "reservering" ? <StatusBadge tone="info">Reservering</StatusBadge> : null}</div><StatusBadge tone={budgetRemaining < 0 ? "warning" : "success"}>{budgetRemaining < 0 ? "Overschreden" : "Op koers"}</StatusBadge></div>
+              <div className="mt-4"><ProgressBar value={budget.planned > 0 ? budget.actual / budget.planned : 0} tone={budgetRemaining < 0 ? "warning" : "brand"} /></div>
               <dl className="mt-3 grid grid-cols-3 gap-2 text-xs"><Metric label="Budget" value={formatCurrency(budget.planned)} /><Metric label="Besteed" value={formatCurrency(budget.actual)} /><Metric label="Over" value={formatCurrency(budgetRemaining)} /></dl>
-              {canMutate ? <div className="mt-3 flex items-end gap-2"><form action={saveAnnualBudget} className="contents"><input type="hidden" name="year" value={year} /><input type="hidden" name="categoryId" value={budget.categoryId} /><div className="flex-1"><FieldLabel htmlFor={`annual-${budget.categoryId}`}>Jaarbedrag</FieldLabel><Input id={`annual-${budget.categoryId}`} name="planned" inputMode="decimal" defaultValue={String(budget.planned).replace(".", ",")} /></div><SubmitButton size="sm" variant="secondary" pendingLabel="Bewaren...">Wijzigen</SubmitButton></form><form action={deleteAnnualBudget}><input type="hidden" name="year" value={year} /><input type="hidden" name="categoryId" value={budget.categoryId} /><Button type="submit" size="sm" variant="ghost" aria-label={`${category?.name ?? budget.categoryId} jaarbudget verwijderen`}><Trash2 aria-hidden="true" size={14} /></Button></form></div> : null}
+              {canMutate ? <div className="mt-4 flex items-end gap-2"><form action={saveAnnualBudget} className="contents"><input type="hidden" name="year" value={year} /><input type="hidden" name="categoryId" value={budget.categoryId} /><div className="flex-1"><FieldLabel htmlFor={`annual-${budget.categoryId}`}>Jaarbedrag</FieldLabel><Input id={`annual-${budget.categoryId}`} name="planned" inputMode="decimal" defaultValue={String(budget.planned).replace(".", ",")} /></div><SubmitButton size="sm" variant="secondary" pendingLabel="Bewaren...">Wijzigen</SubmitButton></form><form action={deleteAnnualBudget}><input type="hidden" name="year" value={year} /><input type="hidden" name="categoryId" value={budget.categoryId} /><Button type="submit" size="sm" variant="ghost" aria-label={`${category?.name ?? budget.categoryId} jaarbudget verwijderen`}><Trash2 aria-hidden="true" size={14} /></Button></form></div> : null}
             </article>;
           })}
-          {!budgets.length ? <p className="text-sm text-[var(--color-text-muted)]">Nog geen jaarbudgetten voor {year}.</p> : null}
+          {!budgets.length ? <p className="border border-dashed border-border p-6 text-sm text-[var(--color-text-muted)]">Nog geen jaarbudgetten voor {year}.</p> : null}
         </div>
       </section>
     </div>
@@ -473,7 +473,7 @@ function ViewLink({ href, active, children }: { href: string; active: boolean; c
   return (
     <Link
       href={href}
-      className={active ? "rounded px-3 py-1.5 text-white bg-brand" : "rounded px-3 py-1.5 text-brand hover:bg-[var(--color-brand-subtle)]"}
+      className={active ? "px-3 py-1.5 text-white bg-brand" : "px-3 py-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)]"}
     >
       {children}
     </Link>
@@ -486,21 +486,21 @@ function BudgetOverviewCard({ label, budget, suggestion }: { label: string; budg
   const remaining = budget.planned - budget.actual;
   const usage = budget.planned > 0 ? budget.actual / budget.planned : budget.actual > 0 ? 1 : 0;
   return (
-    <article className="rounded-md border border-border bg-white p-3">
-      <div className="mb-3 flex items-start justify-between gap-2">
+    <article className="border border-border bg-[var(--color-panel-strong)] p-5">
+      <div className="mb-4 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold text-brand">{label}</h3>
+          <h3 className="truncate text-sm font-medium text-[var(--color-text)]">{label}</h3>
           <p className="mt-1 text-xs text-[var(--color-text-muted)]">{formatCurrency(remaining)} resterend</p>
         </div>
         <StatusBadge tone={remaining < 0 ? "warning" : "success"}>{remaining < 0 ? "Overschreden" : "Binnen budget"}</StatusBadge>
       </div>
       <ProgressBar value={usage} tone={remaining < 0 ? "warning" : "brand"} />
-      <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+      <dl className="mt-4 grid grid-cols-3 gap-2 text-xs">
         <Metric label="Budget" value={formatCurrency(budget.planned)} />
         <Metric label="Besteed" value={formatCurrency(budget.actual)} />
         <Metric label="Over" value={formatCurrency(remaining)} />
       </dl>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <StatusBadge tone={budget.rollover ? "info" : "neutral"}>{budget.rollover ? "Meenemen" : "Vervalt"}</StatusBadge>
         {(budget.carriedAmount ?? 0) > 0 ? <StatusBadge tone="success">+{formatCurrency(budget.carriedAmount ?? 0)} meegenomen</StatusBadge> : null}
         {budget.exceptionAccepted ? <StatusBadge tone="info">Bewuste uitzondering</StatusBadge> : null}
@@ -513,10 +513,10 @@ function BudgetOverviewCard({ label, budget, suggestion }: { label: string; budg
 
 function BudgetSuggestionNote({ suggestion }: { suggestion: BudgetSuggestionItem }) {
   return (
-    <div className="mt-3 rounded-md border border-border bg-[var(--color-surface)] p-2 text-xs">
+    <div className="mt-4 border border-border bg-[var(--color-surface)] p-4 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span>
-          <span className="font-semibold text-brand">Slim voorstel: </span>
+          <span className="font-medium text-[var(--color-text)]">Slim voorstel: </span>
           {formatCurrency(suggestion.amount)}
         </span>
         <StatusBadge tone={suggestion.confidence === "hoog" ? "success" : suggestion.confidence === "middel" ? "info" : "neutral"}>
@@ -530,13 +530,13 @@ function BudgetSuggestionNote({ suggestion }: { suggestion: BudgetSuggestionItem
         <Metric label="Bandbreedte" value={`${formatCurrency(suggestion.minAmount)} - ${formatCurrency(suggestion.maxAmount)}`} />
       </dl>
       {suggestion.drivers.length ? (
-        <div className="mt-2 rounded-md bg-white p-2">
-          <p className="text-[0.68rem] font-bold uppercase tracking-wide text-[var(--color-text-subtle)]">Verklaard door</p>
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">Verklaard door</p>
           <div className="mt-1 grid gap-1">
             {suggestion.drivers.map((driver) => (
               <div key={driver.label} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                 <span className="truncate text-[var(--color-text-muted)]">{driver.label}</span>
-                <strong className="tabular-nums text-brand">{formatCurrency(driver.amount)}</strong>
+                <strong className="font-medium tabular-nums text-[var(--color-text)]">{formatCurrency(driver.amount)}</strong>
               </div>
             ))}
           </div>
@@ -546,20 +546,11 @@ function BudgetSuggestionNote({ suggestion }: { suggestion: BudgetSuggestionItem
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-white p-3 shadow-[var(--shadow-sm)]">
-      <p className="text-[0.68rem] font-bold uppercase tracking-wide text-[var(--color-text-subtle)]">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-brand">{value}</p>
-    </div>
-  );
-}
-
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-[var(--color-surface)] p-2">
-      <dt className="text-[var(--color-text-subtle)]">{label}</dt>
-      <dd className="mt-1 font-semibold">{value}</dd>
+    <div className="border-t border-border pt-2">
+      <dt className="text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">{label}</dt>
+      <dd className="money-value mt-1 font-medium text-[var(--color-text)]">{value}</dd>
     </div>
   );
 }

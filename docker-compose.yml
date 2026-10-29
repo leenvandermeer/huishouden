@@ -38,6 +38,34 @@ services:
       postgres:
         condition: service_healthy
 
+  # Local development with hot reload: docker compose --env-file .env.local --profile dev up -d dev
+  dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      target: dependencies
+    container_name: huishouden-dev
+    command: ["npx", "next", "dev", "--hostname", "0.0.0.0", "--port", "3000"]
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/huishouden
+      APP_URL: http://localhost:${DEV_HOST_PORT:-3020}
+      RABOBANK_SAVINGS_IBANS: ${RABOBANK_SAVINGS_IBANS:-}
+      TOTP_PENDING_SECRET: ${TOTP_PENDING_SECRET:-}
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-}
+      TOTP_ISSUER: ${TOTP_ISSUER:-Huishouden}
+      WATCHPACK_POLLING: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "127.0.0.1:${DEV_HOST_PORT:-3020}:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   operations:
     profiles: ["operations"]
     build:

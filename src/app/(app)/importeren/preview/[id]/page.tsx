@@ -68,18 +68,16 @@ export default async function ImportPreviewPage({ params }: { params: Promise<{ 
         eyebrow="Stap 2 van 2"
         title="Klopt alles?"
         description="Controleer de aantallen en sla de betalingen daarna op."
+        stats={[
+          { label: "Nieuw", value: String(Math.max(totalTransactions - totalExisting, 0)), detail: "Worden toegevoegd", lead: true },
+          { label: "Transacties", value: String(totalTransactions), detail: `In ${previews.length} bestand${previews.length === 1 ? "" : "en"}` },
+          { label: "Al bekend", value: String(totalExisting), detail: "Worden overgeslagen" },
+          { label: "Rekeningen", value: String(totalAccounts) },
+        ]}
       />
 
-      <section className="mb-3 grid gap-3 sm:grid-cols-5">
-        <SummaryCard label="Bestanden" value={String(previews.length)} />
-        <SummaryCard label="Rekeningen" value={String(totalAccounts)} />
-        <SummaryCard label="Transacties" value={String(totalTransactions)} />
-        <SummaryCard label="Nieuw" value={String(Math.max(totalTransactions - totalExisting, 0))} />
-        <SummaryCard label="Al bekend" value={String(totalExisting)} />
-      </section>
-
       {totalExisting > 0 ? (
-        <p className="mb-3 text-sm text-[var(--color-text-muted)]">
+        <p className="mb-8 max-w-3xl font-[family-name:var(--font-serif-house)] text-sm leading-6 text-[var(--color-text-muted)]">
           Van de {totalTransactions} transacties in je bestanden zijn er {totalExisting} al bekend.
           {totalExisting === totalTransactions ? " Er worden geen nieuwe transacties toegevoegd." : " Alleen nieuwe transacties worden toegevoegd."}
         </p>
@@ -88,9 +86,9 @@ export default async function ImportPreviewPage({ params }: { params: Promise<{ 
       <BankImportConfirmForm>
         <input type="hidden" name="pendingImportId" value={pendingImport.id} />
         {requiresMapping ? (
-          <div className="mb-4 rounded-md border border-border bg-[var(--color-warning-subtle)] p-3">
+          <div className="mb-8 border border-border border-l-2 border-l-[var(--color-warning)] bg-[var(--color-panel-strong)] p-5 md:p-6">
             <StatusBadge tone="warning"><AlertTriangle aria-hidden="true" size={12} /> Kies de juiste kolommen</StatusBadge>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {fields.map((field) => (
                 <div key={field.id}>
                   <FieldLabel htmlFor={`mapping-${field.id}`}>{field.label}{field.required ? " *" : ""}</FieldLabel>
@@ -105,30 +103,34 @@ export default async function ImportPreviewPage({ params }: { params: Promise<{ 
             {preset ? <FieldHint>Ingevuld met je bewaarde indeling: {preset.name}.</FieldHint> : null}
           </div>
         ) : (
-          <div className="mb-4 rounded-md border border-border bg-[var(--color-success-subtle)] p-3 text-xs text-emerald-800">
-            <CheckCircle2 aria-hidden="true" size={14} className="mr-1 inline" /> Alle verplichte kolommen zijn automatisch herkend.
+          <div className="mb-8 flex items-center gap-2 border border-border bg-[var(--color-panel-strong)] p-5 text-sm text-[var(--color-text)]">
+            <CheckCircle2 aria-hidden="true" size={16} strokeWidth={1.5} className="shrink-0 text-[var(--color-success)]" /> Alle verplichte kolommen zijn automatisch herkend.
           </div>
         )}
 
-        <div className="grid gap-3">
+        <div className="section-head">
+          <h2>Bestanden</h2>
+          <p>Per bestand de herkende bank, periode en aantallen.</p>
+        </div>
+        <div className="mb-8 grid gap-4">
           {previews.map((preview) => {
             const dateRange = preview.parsed?.transactions.length
               ? `${preview.parsed.transactions.at(-1)?.date} t/m ${preview.parsed.transactions[0]?.date}`
               : "Onbekend";
             const total = preview.parsed?.transactions.reduce((sum, transaction) => sum + transaction.amount, 0) ?? 0;
             return (
-              <article key={preview.file.filename} className="rounded-md border border-border p-3">
+              <article key={preview.file.filename} className="border border-border bg-[var(--color-panel-strong)] p-5 md:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-brand"><FileSpreadsheet aria-hidden="true" size={15} className="mr-1 inline" /> {preview.file.filename}</h2>
+                    <h3 className="break-all text-sm font-medium text-[var(--color-text)]"><FileSpreadsheet aria-hidden="true" size={15} strokeWidth={1.5} className="mr-1 inline text-[var(--color-text-muted)]" /> {preview.file.filename}</h3>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">{dateRange}</p>
                   </div>
                   <StatusBadge tone={preview.error ? "warning" : "success"}>{preview.error ? "Niet herkend" : `${preview.parsed?.importInfo?.sourceBank ?? "Bank"} · ${formatLabel(preview.format)}`}</StatusBadge>
                 </div>
                 {preview.error ? (
-                  <p className="mt-3 text-xs text-amber-900">{preview.error}</p>
+                  <p className="mt-4 text-xs text-[var(--color-warning)]">{preview.error}</p>
                 ) : (
-                  <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
+                  <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-5 text-xs sm:grid-cols-4">
                     <Info label="Rekeningen" value={String(preview.parsed?.accounts.length ?? 0)} />
                     <Info label="Transacties" value={String(preview.parsed?.transactions.length ?? 0)} />
                     <Info label="Al bekend" value={String(preview.existing)} />
@@ -145,20 +147,11 @@ export default async function ImportPreviewPage({ params }: { params: Promise<{ 
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[var(--radius-lg)] border border-border bg-white p-3 shadow-[var(--shadow-sm)]">
-      <p className="text-[0.68rem] font-bold uppercase tracking-wide text-[var(--color-text-subtle)]">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-brand">{value}</p>
-    </div>
-  );
-}
-
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-[var(--color-surface)] p-2">
-      <dt className="text-[var(--color-text-subtle)]">{label}</dt>
-      <dd className="mt-1 font-semibold text-[var(--color-text)]">{value}</dd>
+    <div>
+      <dt className="text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">{label}</dt>
+      <dd className="money-value mt-1 text-lg font-light text-[var(--color-text)]">{value}</dd>
     </div>
   );
 }

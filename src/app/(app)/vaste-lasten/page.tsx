@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowDownToLine, Ban, CalendarClock, CircleAlert, Download } from "lucide-react";
+import { AlertTriangle, Ban, CircleAlert, Download } from "lucide-react";
 import { Button, ButtonLink, FieldLabel, Input, PageHeader, Select, StatusBadge, SubmitButton } from "@/components/ui";
 import { ReadonlyNotice } from "@/components/finance/readonly-notice";
 import { FixedExpenseDateFields } from "@/components/finance/fixed-expense-date-fields";
@@ -11,6 +11,7 @@ import { requireUser } from "@/modules/auth/service";
 import { getAvailableMonths, getCategoryName, getFixedExpenseHealthSignals, monthlyAmount } from "@/modules/finance/reporting";
 import { dueDateConfidenceLabel } from "@/modules/finance/fixed-expense-date";
 import { FORECAST_STATUS_LABELS } from "@/modules/finance/forecast-evidence";
+import { rollDateForward } from "@/modules/finance/recurrence";
 import type { Category, FixedExpense, FixedExpenseCandidate, Frequency, RecurringIncome } from "@/modules/finance/types";
 
 export default async function FixedExpensesPage() {
@@ -29,27 +30,37 @@ export default async function FixedExpensesPage() {
   const openCandidates = candidates.filter((candidate) => !candidate.alreadyManaged);
   const latestMonth = getAvailableMonths(dataset.transactions)[0];
   const healthSignals = getFixedExpenseHealthSignals(dataset.transactions, fixedExpenses, latestMonth);
+  // Stored dates may lie in the past; the overview shows each income's next occurrence from today.
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  const upcomingIncomes = recurringIncomes.map((income) => ({ ...income, nextExpectedOn: rollDateForward(income.nextExpectedOn, income.frequency, today) }));
+  const nextIncome = [...upcomingIncomes].sort((a, b) => a.nextExpectedOn.localeCompare(b.nextExpectedOn))[0];
 
   return (
     <>
       <PageHeader
         eyebrow="Planning"
         title="Inkomen en vaste lasten"
-        description={canMutate ? `Plan wanneer salaris, huur en andere vaste bedragen komen. Per maand: ${formatCurrency(totalMonthly)}.` : `Bekijk je vaste inkomsten en betalingen. Per maand: ${formatCurrency(totalMonthly)}.`}
+        description={canMutate ? "Plan wanneer salaris, huur en andere vaste bedragen komen." : "Bekijk je vaste inkomsten en betalingen."}
+        stats={[
+          { label: "Vaste lasten per maand", value: formatCurrency(totalMonthly), detail: `${fixedExpenses.length} actief, omgerekend naar maandbasis`, lead: true },
+          { label: "Volgend inkomen", value: nextIncome ? `+${formatCurrency(nextIncome.amount)}` : "—", detail: nextIncome ? `${nextIncome.label} · ${formatDate(nextIncome.nextExpectedOn)}` : incomeCandidates.length ? `${incomeCandidates.length} geschat uit transacties` : "Nog niet ingesteld", tone: nextIncome ? undefined : "risk" },
+          { label: "Kandidaten", value: String(openCandidates.length), detail: openCandidates.length ? "Terugkerende betalingen te beoordelen" : "Niets te beoordelen" },
+          { label: "Signalen", value: String(healthSignals.length), detail: latestMonth ? formatMonthLabel(latestMonth) : "Geen maand bekend", tone: healthSignals.length ? "risk" : undefined },
+        ]}
         actions={canMutate ? <ButtonLink href="/api/export/forward" variant="secondary"><Download aria-hidden="true" size={14} /> Exporteer CSV</ButtonLink> : undefined}
       />
-      {!canMutate ? <div className="mb-3"><ReadonlyNotice /></div> : null}
+      {!canMutate ? <div className="mb-6"><ReadonlyNotice /></div> : null}
 
-      <PayCycleTimeline incomes={recurringIncomes} incomeCandidates={incomeCandidates} expenses={fixedExpenses} />
+      <PayCycleTimeline incomes={upcomingIncomes} incomeCandidates={incomeCandidates} expenses={fixedExpenses} />
 
       <IncomePlanningSection canMutate={canMutate} incomes={recurringIncomes} candidates={incomeCandidates} />
 
-      <section className="mb-3">
+      <section className="mb-8">
         {canMutate ? (
-        <details className="planning-editor rounded-[var(--radius-lg)] border border-border bg-white">
+        <details className="planning-editor border border-border bg-[var(--color-panel-strong)]">
           <summary>Nieuwe vaste last toevoegen</summary>
-          <form action={saveFixedExpense} className="p-4 pt-1">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem_9rem_10rem_auto] xl:items-end">
+          <form action={saveFixedExpense} className="p-5 pt-1 md:p-6 md:pt-1">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem_9rem_10rem_auto] xl:items-end">
             <div>
               <FieldLabel htmlFor="supplier">Leverancier</FieldLabel>
               <Input id="supplier" name="supplier" placeholder="KPN" />
@@ -71,7 +82,7 @@ export default async function FixedExpensesPage() {
               Opslaan
             </SubmitButton>
           </div>
-          <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)]">
+          <label className="mt-4 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
             <input name="updateTransactions" type="checkbox" className="h-3.5 w-3.5" />
             Bestaande transacties van deze leverancier koppelen aan de gekozen categorie
           </label>
@@ -82,24 +93,28 @@ export default async function FixedExpensesPage() {
 
       <FixedExpenseSignals signals={healthSignals} month={latestMonth} />
 
-      <section className="mb-3 rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
-          <h2 className="text-xs font-semibold text-brand">Actieve vaste lasten</h2>
+      <section className="mb-8">
+        <div className="section-head">
+          <div className="grid gap-2">
+            <h2>Actieve vaste lasten</h2>
+            <p>Bedragen, frequentie en de volgende afschrijving per leverancier.</p>
+          </div>
           <StatusBadge tone="info">{fixedExpenses.length} actief</StatusBadge>
         </div>
+        <div className="border border-border bg-[var(--color-panel-strong)]">
         <div className="hidden md:block">
           <div className="table-responsive">
           <table className="w-full min-w-[58rem] border-collapse text-left text-xs">
-            <thead className="border-b border-border bg-[var(--color-surface)] text-[var(--color-text-subtle)]">
+            <thead className="border-b border-border text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">
               <tr>
-                <th className="px-3 py-2">Leverancier</th>
-                <th className="px-3 py-2">Categorie</th>
-                <th className="px-3 py-2">Frequentie</th>
-                <th className="px-3 py-2">Volgende afschrijving</th>
-                <th className="px-3 py-2 text-right">Bedrag</th>
-                <th className="px-3 py-2 text-right">Maandbasis</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2 text-right">Actie</th>
+                <th className="px-4 py-3 font-normal">Leverancier</th>
+                <th className="px-4 py-3 font-normal">Categorie</th>
+                <th className="px-4 py-3 font-normal">Frequentie</th>
+                <th className="px-4 py-3 font-normal">Volgende afschrijving</th>
+                <th className="px-4 py-3 font-normal text-right">Bedrag</th>
+                <th className="px-4 py-3 font-normal text-right">Maandbasis</th>
+                <th className="px-4 py-3 font-normal">Status</th>
+                <th className="px-4 py-3 font-normal text-right">Actie</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -123,7 +138,7 @@ export default async function FixedExpensesPage() {
           ))}
           {fixedExpenses.length > 6 ? (
             <details className="group">
-              <summary className="cursor-pointer list-none px-3 py-3 text-center text-xs font-bold text-brand marker:content-none">Toon nog {fixedExpenses.length - 6} vaste lasten</summary>
+              <summary className="cursor-pointer list-none px-4 py-4 text-center text-xs text-brand marker:content-none">Toon nog {fixedExpenses.length - 6} vaste lasten</summary>
               <div className="divide-y divide-border border-t border-border">
                 {fixedExpenses.slice(6).map((expense) => (
                   <FixedExpenseMobileCard key={expense.id} canMutate={canMutate} expense={expense} categories={categories} fixedCategories={fixedCategories} />
@@ -133,12 +148,13 @@ export default async function FixedExpensesPage() {
           ) : null}
           {!fixedExpenses.length ? <p className="p-5 text-center text-xs text-[var(--color-text-muted)]">Nog geen vaste lasten beheerd.</p> : null}
         </div>
+        </div>
       </section>
 
-      <details className="group rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-3 marker:content-none">
+      <details className="group mb-8 border border-border bg-[var(--color-panel-strong)]">
+        <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-5 marker:content-none">
           <span>
-            <span className="block text-sm font-semibold text-brand">Kandidaten uit transacties</span>
+            <span className="block text-sm font-medium text-[var(--color-text)]">Kandidaten uit transacties</span>
             <span className="mt-0.5 block text-xs text-[var(--color-text-muted)]">Open alleen wanneer je nieuwe vaste lasten wilt beoordelen</span>
           </span>
           <StatusBadge tone={openCandidates.length ? "warning" : "success"}>{openCandidates.length} open</StatusBadge>
@@ -148,7 +164,7 @@ export default async function FixedExpensesPage() {
             <CandidateRow key={candidate.id} canMutate={canMutate} candidate={candidate} categories={fixedCategories} />
           ))}
           {candidates.length === 0 ? (
-            <p className="p-3 text-xs text-[var(--color-text-muted)]">Nog geen terugkerende betalingen gevonden.</p>
+            <p className="p-5 text-xs text-[var(--color-text-muted)]">Nog geen terugkerende betalingen gevonden.</p>
           ) : null}
         </div>
       </details>
@@ -158,24 +174,22 @@ export default async function FixedExpensesPage() {
 
 function IncomePlanningSection({ canMutate, incomes, candidates }: { canMutate: boolean; incomes: RecurringIncome[]; candidates: IncomeForecastSource[] }) {
   return (
-    <section id="income-planning" className="mb-3 overflow-hidden rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-[linear-gradient(135deg,var(--color-brand-subtle),white)] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white"><ArrowDownToLine aria-hidden="true" size={19} /></span>
-          <div>
-            <h2 className="text-sm font-bold text-brand">Verwachte inkomsten</h2>
-            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">De betaaldatum bepaalt de echte ruimte tot je volgende inkomen.</p>
-          </div>
+    <section id="income-planning" className="mb-8">
+      <div className="section-head">
+        <div className="grid gap-2">
+          <h2>Verwachte inkomsten</h2>
+          <p>De betaaldatum bepaalt de echte ruimte tot je volgende inkomen.</p>
         </div>
         <StatusBadge tone={incomes.length ? "success" : candidates.length ? "info" : "warning"}>
           {incomes.length ? `${incomes.length} gepland` : candidates.length ? `${candidates.length} schatting${candidates.length === 1 ? "" : "en"}` : "Nog niet ingesteld"}
         </StatusBadge>
       </div>
 
+      <div className="border border-border bg-[var(--color-panel-strong)]">
       {canMutate ? (
         <details className="planning-editor border-b border-border">
           <summary>Nieuw inkomen plannen</summary>
-          <form action={saveRecurringIncome} className="grid gap-3 p-4 pt-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_9rem_10rem_10rem_auto] xl:items-end">
+          <form action={saveRecurringIncome} className="grid gap-4 p-5 pt-2 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_9rem_10rem_10rem_auto] xl:items-end">
           <div>
             <FieldLabel htmlFor="income-label">Naam</FieldLabel>
             <Input id="income-label" name="label" placeholder="Salaris" required />
@@ -197,17 +211,14 @@ function IncomePlanningSection({ canMutate, incomes, candidates }: { canMutate: 
         </details>
       ) : null}
 
-      <div className="grid gap-2 p-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 p-5 md:grid-cols-2 xl:grid-cols-3">
         {incomes.map((income) => (
-          <article key={income.id} className="rounded-2xl border border-border bg-[var(--color-surface)] p-3.5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="font-bold text-brand">{income.label}</h3>
-                <p className="mt-1 text-xl font-bold tabular-nums text-emerald-700">+{formatCurrency(income.amount)}</p>
-              </div>
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-brand"><CalendarClock aria-hidden="true" size={18} /></span>
+          <article key={income.id} className="border border-border bg-[var(--color-surface)] p-5">
+            <div>
+              <h3 className="text-sm font-medium text-[var(--color-text)]">{income.label}</h3>
+              <p className="money-value mt-2 text-2xl font-light text-[var(--color-success)]">+{formatCurrency(income.amount)}</p>
             </div>
-            <p className="mt-3 text-xs font-semibold text-[var(--color-text-muted)]">{formatDate(income.nextExpectedOn)} · {frequencyLabel(income.frequency)}</p>
+            <p className="mt-3 text-xs text-[var(--color-text-muted)]">{formatDate(income.nextExpectedOn)} · {frequencyLabel(income.frequency)}</p>
             {canMutate ? (
               <details className="income-editor mt-3 border-t border-border">
                 <summary>Wijzigen</summary>
@@ -232,16 +243,16 @@ function IncomePlanningSection({ canMutate, incomes, candidates }: { canMutate: 
         {!incomes.length ? <p className="p-2 text-xs leading-5 text-[var(--color-text-muted)]">Zonder bevestigde planning gebruikt Vandaag tijdelijk {candidates.length ? "de herkende inkomsten hieronder" : "een herkenbaar terugkerend inkomen"} en markeert die als schatting.</p> : null}
       </div>
       {candidates.length ? (
-        <div className="border-t border-border bg-[var(--color-surface)] p-3">
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-            <div><h3 className="text-sm font-semibold text-brand">Herkend uit transacties</h3><p className="mt-1 text-xs text-[var(--color-text-muted)]">Bevestig een bron om bedrag en datum zelf te beheren, of sluit hem uit.</p></div>
+        <div className="border-t border-border p-5">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+            <div><h3 className="text-sm font-medium text-[var(--color-text)]">Herkend uit transacties</h3><p className="mt-1 text-xs text-[var(--color-text-muted)]">Bevestig een bron om bedrag en datum zelf te beheren, of sluit hem uit.</p></div>
             <StatusBadge tone="info">{candidates.length} voorstel{candidates.length === 1 ? "" : "len"}</StatusBadge>
           </div>
-          <div className="grid gap-2 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             {candidates.map((candidate) => (
-              <article key={candidate.candidateId} className="rounded-xl border border-border bg-white p-3">
+              <article key={candidate.candidateId} className="border border-border bg-[var(--color-surface)] p-5">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div><h4 className="font-semibold text-brand">{candidate.label}</h4><p className="mt-1 text-lg font-bold tabular-nums text-emerald-700">ongeveer +{formatCurrency(candidate.amount)}</p></div>
+                  <div><h4 className="text-sm font-medium text-[var(--color-text)]">{candidate.label}</h4><p className="money-value mt-2 text-xl font-light text-[var(--color-success)]">ongeveer +{formatCurrency(candidate.amount)}</p></div>
                   <StatusBadge tone={candidate.status === "strong_estimate" ? "success" : candidate.status === "deviation" ? "warning" : "info"}>{candidate.status === "strong_estimate" ? "Sterke schatting" : candidate.status === "deviation" ? "Afwijking" : "Voorlopige schatting"}</StatusBadge>
                 </div>
                 <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">{frequencyLabel(candidate.frequency)} · verwacht {formatDate(candidate.date)} · {candidate.evidenceCount} perioden · bereik {formatCurrency(candidate.minimumAmount)}–{formatCurrency(candidate.maximumAmount)}</p>
@@ -265,12 +276,13 @@ function IncomePlanningSection({ canMutate, incomes, candidates }: { canMutate: 
           </div>
         </div>
       ) : null}
+      </div>
     </section>
   );
 }
 
 function ButtonLinkToTransactions({ label }: { label: string }) {
-  return <Link href={`/transacties?q=${encodeURIComponent(label)}&kind=inkomen`} className="inline-flex min-h-9 items-center rounded-lg px-3 text-xs font-semibold text-brand hover:bg-[var(--color-brand-subtle)]">Brontransacties</Link>;
+  return <Link href={`/transacties?q=${encodeURIComponent(label)}&kind=inkomen`} className="inline-flex min-h-9 items-center px-3 text-xs text-brand underline-offset-4 hover:underline">Brontransacties</Link>;
 }
 
 function PayCycleTimeline({ incomes, incomeCandidates, expenses }: { incomes: RecurringIncome[]; incomeCandidates: IncomeForecastSource[]; expenses: FixedExpense[] }) {
@@ -286,11 +298,11 @@ function PayCycleTimeline({ incomes, incomeCandidates, expenses }: { incomes: Re
   const hasIncome = incomes.length + incomeCandidates.length > 0;
 
   return (
-    <section className="pay-cycle" aria-labelledby="pay-cycle-title">
-      <div className="pay-cycle__header">
-        <div>
-          <p>Betaalcyclus</p>
-          <h2 id="pay-cycle-title">Van vandaag naar het volgende inkomen</h2>
+    <section className="pay-cycle mb-8" aria-labelledby="pay-cycle-title">
+      <div className="section-head">
+        <div className="grid gap-2">
+          <h2 id="pay-cycle-title">Betaalcyclus</h2>
+          <p>Van vandaag naar het volgende inkomen.</p>
         </div>
         <StatusBadge tone={incomes.length ? "success" : hasIncome ? "info" : "warning"}>{incomes.length ? "Datums actief" : hasIncome ? "Deels geschat" : "Inkomen ontbreekt"}</StatusBadge>
       </div>
@@ -319,23 +331,23 @@ type FixedExpenseSignal = ReturnType<typeof getFixedExpenseHealthSignals>[number
 
 function FixedExpenseSignals({ signals, month }: { signals: FixedExpenseSignal[]; month?: string }) {
   return (
-    <details className="group mb-3 rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-3 marker:content-none">
+    <details className="group mb-8 border border-border bg-[var(--color-panel-strong)]">
+      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 p-5 marker:content-none">
         <span>
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-brand"><CircleAlert aria-hidden="true" size={15} /> Signalen vaste lasten{month ? ` ${formatMonthLabel(month)}` : ""}</span>
+          <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--color-text)]"><CircleAlert aria-hidden="true" size={15} className="text-[var(--color-text-muted)]" /> Signalen vaste lasten{month ? ` ${formatMonthLabel(month)}` : ""}</span>
           <span className="mt-1 block text-xs text-[var(--color-text-muted)]">Afwijkingen, ontbrekende betalingen en mogelijke dubbelen</span>
         </span>
         <StatusBadge tone={signals.length ? "warning" : "success"}>{signals.length ? `${signals.length} te bekijken` : "Geen bijzonderheden"}</StatusBadge>
       </summary>
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border p-5">
       {signals.length ? (
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {signals.map((signal) => {
             const delta = signal.expectedAmount != null ? signal.amount - signal.expectedAmount : signal.amount;
             return (
-              <article key={signal.id} className={signal.tone === "warning" ? "rounded-md border border-amber-200 bg-[var(--color-warning-subtle)] p-3" : "rounded-md border border-border bg-[var(--color-surface)] p-3"}>
+              <article key={signal.id} className={signal.tone === "warning" ? "border border-border border-l-2 border-l-[var(--color-warning)] bg-[var(--color-surface)] p-5" : "border border-border bg-[var(--color-surface)] p-5"}>
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-brand">{signal.title}</h3>
+                  <h3 className="text-sm font-medium text-[var(--color-text)]">{signal.title}</h3>
                   <StatusBadge tone={signal.type === "duplicate" ? "info" : "warning"}>{signal.type === "duplicate" ? "Dubbeling" : signal.type === "missing" ? "Mist" : "Afwijking"}</StatusBadge>
                 </div>
                 <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">{signal.detail}</p>
@@ -362,23 +374,23 @@ function FixedExpenseRow({ canMutate, expense, categories, fixedCategories }: { 
   const dueDate = fixedExpenseDueDate(expense);
 
   return (
-    <tr className="hover:bg-[var(--color-surface)]">
-      <td className="px-3 py-2">
+    <tr className="align-top hover:bg-[var(--color-surface)]">
+      <td className="px-4 py-3">
         {canMutate ? (
         <>
         <form id={formId} action={saveFixedExpense} />
         <input form={formId} type="hidden" name="fixedExpenseId" value={expense.id} />
         <Input form={formId} name="supplier" defaultValue={expense.supplier} aria-label="Leverancier" />
         </>
-        ) : <span className="font-semibold text-brand">{expense.supplier}</span>}
+        ) : <span className="font-medium text-[var(--color-text)]">{expense.supplier}</span>}
       </td>
-      <td className="px-3 py-2">
+      <td className="px-4 py-3">
         {canMutate ? <CategorySelect id={`category-${expense.id}`} name="categoryId" categories={fixedCategories} defaultValue={expense.categoryId} form={formId} /> : null}
         <span className="sr-only">{getCategoryName(categories, expense.categoryId)}</span>
         {!canMutate ? <span>{getCategoryName(categories, expense.categoryId)}</span> : null}
       </td>
-      <td className="px-3 py-2">{canMutate ? <FrequencySelect id={`frequency-${expense.id}`} name="frequency" defaultValue={expense.frequency} form={formId} /> : frequencyLabel(expense.frequency)}</td>
-      <td className="px-3 py-2">
+      <td className="px-4 py-3">{canMutate ? <FrequencySelect id={`frequency-${expense.id}`} name="frequency" defaultValue={expense.frequency} form={formId} /> : frequencyLabel(expense.frequency)}</td>
+      <td className="px-4 py-3">
         {canMutate ? (
           <FixedExpenseDateFields
             idPrefix={`fixed-${expense.id}`}
@@ -392,12 +404,12 @@ function FixedExpenseRow({ canMutate, expense, categories, fixedCategories }: { 
           />
         ) : <DueDateSummary expense={expense} />}
       </td>
-      <td className="px-3 py-2 text-right">
-        {canMutate ? <Input form={formId} name="amount" inputMode="decimal" defaultValue={String(expense.amount).replace(".", ",")} aria-label="Bedrag" className="text-right font-semibold" /> : formatCurrency(expense.amount)}
+      <td className="px-4 py-3 text-right">
+        {canMutate ? <Input form={formId} name="amount" inputMode="decimal" defaultValue={String(expense.amount).replace(".", ",")} aria-label="Bedrag" className="text-right" /> : formatCurrency(expense.amount)}
       </td>
-      <td className="px-3 py-2 text-right">{formatCurrency(monthlyAmount(expense))}</td>
-      <td className="px-3 py-2">{changed ? <StatusBadge tone="warning">Was {formatCurrency(expense.previousAmount ?? expense.amount)}</StatusBadge> : <StatusBadge>Actief</StatusBadge>}</td>
-      <td className="px-3 py-2">
+      <td className="px-4 py-3 text-right">{formatCurrency(monthlyAmount(expense))}</td>
+      <td className="px-4 py-3">{changed ? <StatusBadge tone="warning">Was {formatCurrency(expense.previousAmount ?? expense.amount)}</StatusBadge> : <StatusBadge>Actief</StatusBadge>}</td>
+      <td className="px-4 py-3">
         <div className="flex justify-end gap-2">
           {canMutate ? <Button form={formId} type="submit" size="sm" variant="secondary">Bewaren</Button> : <StatusBadge tone="neutral">Alleen lezen</StatusBadge>}
           {canMutate ? (
@@ -418,21 +430,21 @@ function FixedExpenseMobileCard({ canMutate, expense, categories, fixedCategorie
   const dueDate = fixedExpenseDueDate(expense);
 
   return (
-    <details className="group bg-white">
-      <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 marker:content-none">
+    <details className="group">
+      <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto] items-center gap-3 p-4 marker:content-none">
         <span className="min-w-0">
-          <strong className="block truncate text-sm text-brand">{expense.supplier}</strong>
+          <strong className="block truncate text-sm font-medium text-[var(--color-text)]">{expense.supplier}</strong>
           <span className="mt-1 block text-xs leading-4 text-[var(--color-text-muted)]">{getCategoryName(categories, expense.categoryId)} · {dueDate ? formatDate(dueDate) : "datum onbekend"} · {expense.nextDueOn ? "Zelf ingevuld" : dueDate ? `Schatting (${confidenceShortLabel(expense.dueDateConfidence)})` : "Niet te schatten"}</span>
-          {expense.manualDueDateExpired ? <span className="mt-1 block text-[0.68rem] font-semibold text-[var(--color-warning)]">Handmatige datum verlopen</span> : null}
+          {expense.manualDueDateExpired ? <span className="mt-1 block text-[0.68rem] text-[var(--color-warning)]">Handmatige datum verlopen</span> : null}
         </span>
         <span className="text-right">
-          <strong className="block text-sm tabular-nums text-brand">{formatCurrency(expense.amount)}</strong>
+          <strong className="money-value block text-sm font-medium text-[var(--color-text)]">{formatCurrency(expense.amount)}</strong>
           <span className="mt-1 block text-[0.68rem] text-[var(--color-text-subtle)]">{frequencyLabel(expense.frequency)}</span>
         </span>
       </summary>
       {canMutate ? (
-        <div className="border-t border-border bg-[var(--color-surface)] p-3">
-          <form action={saveFixedExpense} className="grid grid-cols-2 gap-2">
+        <div className="border-t border-border bg-[var(--color-surface)] p-4">
+          <form action={saveFixedExpense} className="grid grid-cols-2 gap-3">
             <input type="hidden" name="fixedExpenseId" value={expense.id} />
             <div className="col-span-2"><FieldLabel htmlFor={`mobile-supplier-${expense.id}`}>Leverancier</FieldLabel><Input id={`mobile-supplier-${expense.id}`} name="supplier" defaultValue={expense.supplier} /></div>
             <div className="col-span-2"><FieldLabel htmlFor={`mobile-category-${expense.id}`}>Categorie</FieldLabel><CategorySelect id={`mobile-category-${expense.id}`} name="categoryId" categories={fixedCategories} defaultValue={expense.categoryId} /></div>
@@ -468,11 +480,11 @@ function DueDateSummary({ expense }: { expense: FixedExpense }) {
   const dueDate = fixedExpenseDueDate(expense);
   return (
     <div>
-      {dueDate ? <span className="font-semibold text-brand">{formatDate(dueDate)}</span> : <span className="text-[var(--color-text-subtle)]">Nog niet te schatten</span>}
+      {dueDate ? <span className="font-medium text-[var(--color-text)]">{formatDate(dueDate)}</span> : <span className="text-[var(--color-text-subtle)]">Nog niet te schatten</span>}
       <span className="mt-1 block text-[0.68rem] text-[var(--color-text-subtle)]">
         {expense.nextDueOn ? "Zelf ingevuld" : dueDate ? expense.dueDateReason ?? `Schatting · ${dueDateConfidenceLabel(expense.dueDateConfidence)} zekerheid · ${expense.dueDateEvidenceCount ?? 0} afschrijvingen` : "Geen eerdere afschrijving gevonden"}
       </span>
-      {expense.manualDueDateExpired ? <span className="mt-1 block text-[0.68rem] font-semibold text-[var(--color-warning)]">Datum verlopen — bijwerken of automatisch laten schatten</span> : null}
+      {expense.manualDueDateExpired ? <span className="mt-1 block text-[0.68rem] text-[var(--color-warning)]">Datum verlopen — bijwerken of automatisch laten schatten</span> : null}
     </div>
   );
 }
@@ -488,11 +500,11 @@ function CandidateRow({ canMutate, candidate, categories }: { canMutate: boolean
   const hasDuplicateSignal = Boolean(candidate.duplicateOf?.length);
 
   return (
-    <article className="grid gap-3 p-3 xl:grid-cols-[minmax(0,1fr)_minmax(26rem,0.85fr)] xl:items-center">
+    <article className="grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_minmax(26rem,0.85fr)] xl:items-center xl:gap-8">
       <div>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-brand">{candidate.supplier}</h3>
+            <h3 className="text-sm font-medium text-[var(--color-text)]">{candidate.supplier}</h3>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
               {candidate.transactionCount} transacties in {candidate.monthsSeen} maanden, {formatDate(candidate.firstSeen)} t/m {formatDate(candidate.lastSeen)}
             </p>
@@ -510,14 +522,14 @@ function CandidateRow({ canMutate, candidate, categories }: { canMutate: boolean
           </div>
         </div>
         {candidate.duplicateOf?.length ? (
-          <div className="mt-3 rounded-md border border-amber-200 bg-[var(--color-warning-subtle)] p-2 text-xs text-amber-950">
-            <strong className="block">Lijkt op bestaand voorstel</strong>
-            <span className="mt-1 block text-amber-900">
+          <div className="mt-3 border-l-2 border-[var(--color-warning)] pl-3 text-xs text-[var(--color-text)]">
+            <strong className="block font-medium text-[var(--color-warning)]">Lijkt op bestaand voorstel</strong>
+            <span className="mt-1 block text-[var(--color-text-muted)]">
               {candidate.duplicateOf.map((duplicate) => `${duplicate.supplier} (${formatCurrency(duplicate.amount)})`).join(", ")}
             </span>
           </div>
         ) : null}
-        <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
+        <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-4">
           <Metric label="Gemiddeld" value={formatCurrency(candidate.amount)} />
           <Metric label="Frequentie" value={frequencyLabel(candidate.frequency)} />
           <Metric label="Maandbasis" value={formatCurrency(monthlyAmount(candidate))} />
@@ -590,9 +602,9 @@ function FrequencySelect({ id, name, defaultValue = "maandelijks", disabled = fa
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-[var(--color-surface)] p-2">
-      <dt className="text-[var(--color-text-subtle)]">{label}</dt>
-      <dd className="mt-1 line-clamp-2 font-semibold">{value}</dd>
+    <div className="border-t border-border pt-2">
+      <dt className="text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">{label}</dt>
+      <dd className="mt-1 line-clamp-2 font-medium text-[var(--color-text)]">{value}</dd>
     </div>
   );
 }

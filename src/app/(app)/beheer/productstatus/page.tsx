@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CheckCircle2, DatabaseZap, RefreshCcw, Wrench } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { PageHeader, StatusBadge } from "@/components/ui";
 import { requireUser } from "@/modules/auth/service";
 import { getProductHealth } from "@/modules/finance/product-health";
@@ -10,59 +10,58 @@ export default async function ProductStatusPage() {
   const healthy = health.errorsLast7Days === 0 && health.missingSourceSignalsLast7Days === 0;
 
   return (
-    <div className="space-y-6">
+    <>
       <PageHeader
         eyebrow="Beheer"
         title="Productstatus"
         description="Zie of de app goed werkt en waar gegevens nog aandacht nodig hebben. Er worden geen bedragen of omschrijvingen gemeten."
+        stats={[
+          { label: "Technische fouten", value: health.errorsLast7Days.toLocaleString("nl-NL"), detail: "afgelopen 7 dagen", tone: health.errorsLast7Days > 0 ? "risk" : undefined },
+          { label: "Inkomen ontbreekt", value: health.missingSourceSignalsLast7Days.toLocaleString("nl-NL"), detail: "unieke dagsignalen", tone: health.missingSourceSignalsLast7Days > 0 ? "risk" : undefined },
+          { label: "Schatting gebruikt", value: health.estimatedSourceSignalsLast7Days.toLocaleString("nl-NL"), detail: "unieke dagsignalen" },
+          { label: "Correcties uitgevoerd", value: health.correctionsLast30Days.toLocaleString("nl-NL"), detail: "afgelopen 30 dagen" },
+        ]}
       />
 
-      <section className="rounded-3xl border border-border bg-white p-5 shadow-[var(--shadow-sm)] md:p-7" aria-labelledby="release-status-title">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">Huidige uitrol</p>
-            <h2 id="release-status-title" className="mt-1 text-2xl font-bold text-[var(--color-text)]">{health.release}</h2>
-            <p className="mt-1 text-sm text-[var(--color-text-muted)]">Status van het huishoudboekje en de opgeslagen financiële gegevens.</p>
-          </div>
-          <StatusBadge tone={healthy ? "success" : "warning"}>{healthy ? "Alles rustig" : "Controle nodig"}</StatusBadge>
+      <section className="mb-12" aria-labelledby="release-status-title">
+        <div className="section-head">
+          <h2>Huidige uitrol</h2>
+          <p>Status van het huishoudboekje en de opgeslagen financiële gegevens.</p>
         </div>
-
-        <dl className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <HealthMetric icon={<AlertTriangle size={19} />} label="Technische fouten" value={health.errorsLast7Days} detail="afgelopen 7 dagen" attention={health.errorsLast7Days > 0} />
-          <HealthMetric icon={<DatabaseZap size={19} />} label="Inkomen ontbreekt" value={health.missingSourceSignalsLast7Days} detail="unieke dagsignalen" attention={health.missingSourceSignalsLast7Days > 0} />
-          <HealthMetric icon={<RefreshCcw size={19} />} label="Schatting gebruikt" value={health.estimatedSourceSignalsLast7Days} detail="unieke dagsignalen" />
-          <HealthMetric icon={<Wrench size={19} />} label="Correcties uitgevoerd" value={health.correctionsLast30Days} detail="afgelopen 30 dagen" />
-        </dl>
-
-        <p className="mt-5 flex items-start gap-2 text-sm text-[var(--color-text-muted)]">
-          <CheckCircle2 aria-hidden="true" className="mt-0.5 shrink-0 text-brand" size={17} />
-          Metingen bevatten alleen het soort signaal, de pagina en de release. Geen saldi, transacties of vrije tekst.
-        </p>
+        <div className="border border-border border-t-[var(--color-text)] bg-[var(--color-panel-strong)] p-5 md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">Release</p>
+              <p id="release-status-title" className="mt-2 text-2xl font-light tracking-[0.04em] text-[var(--color-text)]">{health.release}</p>
+            </div>
+            <StatusBadge tone={healthy ? "success" : "warning"}>{healthy ? "Alles rustig" : "Controle nodig"}</StatusBadge>
+          </div>
+          <p className="mt-5 flex items-start gap-2 border-t border-border pt-4 text-sm leading-6 text-[var(--color-text-muted)]">
+            <CheckCircle2 aria-hidden="true" className="mt-1 shrink-0 text-[var(--color-text-subtle)]" size={16} />
+            Metingen bevatten alleen het soort signaal, de pagina en de release. Geen saldi, transacties of vrije tekst.
+          </p>
+        </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2">
-        <StatusLink href="/vaste-lasten#income-planning" title="Brongegevens controleren" description="Bevestig inkomen en vaste betalingen als er signalen ontbreken." />
-        <StatusLink href="/audit" title="Wijzigingen bekijken" description="Controleer welke correcties, imports en exports zijn uitgevoerd." />
+      <section className="mb-12">
+        <div className="section-head">
+          <h2>Vervolgstappen</h2>
+          <p>Waar je terechtkunt als een signaal aandacht vraagt.</p>
+        </div>
+        <div className="grid border-t border-[var(--color-text)] md:grid-cols-2 md:gap-x-8">
+          <StatusLink href="/vaste-lasten#income-planning" title="Brongegevens controleren" description="Bevestig inkomen en vaste betalingen als er signalen ontbreken." />
+          <StatusLink href="/audit" title="Wijzigingen bekijken" description="Controleer welke correcties, imports en exports zijn uitgevoerd." />
+        </div>
       </section>
-    </div>
-  );
-}
-
-function HealthMetric({ icon, label, value, detail, attention = false }: { icon: React.ReactNode; label: string; value: number; detail: string; attention?: boolean }) {
-  return (
-    <div className={`rounded-2xl border p-4 ${attention ? "border-amber-300 bg-amber-50" : "border-border bg-[var(--color-surface)]"}`}>
-      <dt className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-muted)]">{icon}{label}</dt>
-      <dd className="mt-3 text-3xl font-bold text-[var(--color-text)]">{value.toLocaleString("nl-NL")}</dd>
-      <small className="text-xs text-[var(--color-text-subtle)]">{detail}</small>
-    </div>
+    </>
   );
 }
 
 function StatusLink({ href, title, description }: { href: string; title: string; description: string }) {
   return (
-    <Link href={href} className="flex min-h-24 items-center justify-between gap-4 rounded-2xl border border-border bg-white p-4 shadow-[var(--shadow-sm)] hover:border-brand">
-      <span><strong className="block text-[var(--color-text)]">{title}</strong><small className="mt-1 block text-[var(--color-text-muted)]">{description}</small></span>
-      <ArrowRight aria-hidden="true" className="shrink-0 text-brand" size={18} />
+    <Link href={href} className="group flex min-h-20 items-center justify-between gap-4 border-b border-border px-1 py-4 transition-colors hover:bg-[var(--color-surface)]">
+      <span><strong className="block text-sm font-medium text-[var(--color-text)]">{title}</strong><small className="mt-1 block text-xs leading-5 text-[var(--color-text-muted)]">{description}</small></span>
+      <ArrowRight aria-hidden="true" className="shrink-0 text-[var(--color-text-subtle)] transition-transform group-hover:translate-x-1" size={16} />
     </Link>
   );
 }

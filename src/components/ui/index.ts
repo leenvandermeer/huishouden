@@ -7,6 +7,7 @@ export * from "./password-input";
 export * from "./period-pager";
 export * from "./quick-actions";
 export * from "./skeleton";
+export * from "./stats-strip";
 export * from "./status-badge";
 export * from "./submit-button";
 export * from "./toast";

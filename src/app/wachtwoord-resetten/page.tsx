@@ -8,7 +8,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
   const status = typeof params.status === "string" ? params.status : undefined;
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[var(--color-bg)] p-4">
+    <main className="auth-screen grid min-h-screen place-items-center bg-[var(--color-bg)] p-4">
       <section className="w-full max-w-sm rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-[var(--shadow-sm)]">
         <div className="mb-6 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-md bg-brand text-white">

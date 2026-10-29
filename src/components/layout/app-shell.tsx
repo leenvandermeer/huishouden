@@ -9,77 +9,36 @@ import { beheerNavigationItems, isNavigationItemActive, navigationGroups, type N
 import type { AuthenticatedUser } from "@/modules/auth/service";
 import { ThemeSelector } from "./theme-selector";
 
-function SidebarLink({ item, pathname, onNavigate }: { item: NavigationItem; pathname: string; onNavigate?: () => void }) {
-  const active = isNavigationItemActive(pathname, item);
-  const Icon = item.icon;
-  return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "group flex min-h-10 items-center gap-3 rounded-lg border px-2.5 py-1.5 text-[0.82rem] font-medium transition-colors duration-150",
-        active
-          ? "border-transparent bg-[var(--color-brand-subtle)] text-brand"
-          : "border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]",
-      )}
-    >
-      <span className={cn("grid h-6 w-6 shrink-0 place-items-center transition-colors", active ? "text-brand" : "text-[var(--color-text-subtle)] group-hover:text-[var(--color-text)]")}>
-        <Icon aria-hidden="true" className="h-4 w-4" strokeWidth={active ? 2.3 : 1.8} />
-      </span>
-      <span>{item.label}</span>
-    </Link>
-  );
-}
-
-function NavigationContent({ pathname, user, onNavigate }: { pathname: string; user: AuthenticatedUser; onNavigate?: () => void }) {
+function SiteHeader({ pathname, user }: { pathname: string; user: AuthenticatedUser }) {
   const canMutate = user.role !== "readonly";
+  const items = navigationGroups.flatMap((group) => group.items);
   return (
-    <>
-      <div className="flex h-16 items-center border-b border-border px-3">
-        <Link href="/dashboard" onClick={onNavigate} className="flex min-w-0 items-center gap-3" aria-label="Huishouden vandaag">
-          <span className="brand-monogram" aria-hidden="true">H</span>
-          <span>
-            <strong className="block truncate text-[0.95rem] leading-none tracking-[-0.02em] text-[var(--color-text)]">Huishouden</strong>
-            <span className="mt-1.5 block truncate text-[0.7rem] leading-none text-[var(--color-text-subtle)]">van {user.name.split(" ")[0]}</span>
-          </span>
-        </Link>
-      </div>
-
-      <nav aria-label="Hoofdnavigatie" className="flex-1 overflow-y-auto px-2.5 py-3">
-        {navigationGroups.map((group) => (
-          <section key={group.label} className="mb-3">
-            <h2 className="mb-1.5 px-2.5 text-[0.68rem] font-medium text-[var(--color-text-subtle)]">{group.label}</h2>
-            <div className="space-y-1">
-              {group.items.map((item) => (
-                <SidebarLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
-              ))}
-            </div>
-          </section>
+    <header className="site-header">
+      <Link href="/dashboard" className="site-brand" aria-label="Huishouden vandaag">
+        <span className="site-brand__word">Huishouden</span>
+        <span className="site-brand__sub">van {user.name.split(" ")[0]}</span>
+      </Link>
+      <nav aria-label="Hoofdnavigatie" className="site-nav">
+        {items.map((item) => (
+          <Link key={item.href} href={item.href} aria-current={isNavigationItemActive(pathname, item) ? "page" : undefined}>
+            {item.label}
+          </Link>
         ))}
       </nav>
-
-      <div className="border-t border-border p-2.5">
+      <div className="site-header__right">
         <ThemeSelector compact />
         {canMutate ? (
-          <Link href="/importeren" onClick={onNavigate} className="mt-2 flex min-h-9 items-center justify-center gap-1.5 rounded-md bg-brand px-2.5 text-xs font-semibold text-white shadow-[var(--shadow-sm)] transition hover:bg-[var(--color-brand-hover)]">
-            <Plus aria-hidden="true" size={14} /> Importeren
+          <Link href="/importeren" className="site-header__button" aria-label="Importeren" title="Importeren">
+            <Plus aria-hidden="true" size={13} /> <span className="site-header__label">Importeren</span>
           </Link>
         ) : null}
-        <div className="mt-2 flex items-center gap-2 rounded-md border border-border bg-white/70 px-2 py-1.5">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-[var(--color-accent-subtle)] text-[0.68rem] font-bold text-accent">{user.name.slice(0, 1).toUpperCase()}</span>
-          <span className="min-w-0">
-            <strong className="block truncate text-xs text-[var(--color-text)]">{user.name}</strong>
-            <span className="block truncate text-[0.7rem] text-[var(--color-text-subtle)]">{user.email}</span>
-          </span>
-          <form action="/api/auth/logout" method="post" className="ml-auto">
-            <button type="submit" aria-label="Uitloggen" title="Uitloggen" className="touch-target grid place-items-center rounded-lg text-[var(--color-text-subtle)] hover:bg-[var(--color-surface)] hover:text-brand">
-              <LogOut aria-hidden="true" size={14} />
-            </button>
-          </form>
-        </div>
+        <form action="/api/auth/logout" method="post">
+          <button type="submit" className="site-header__icon" aria-label="Uitloggen" title={`Uitloggen (${user.email})`}>
+            <LogOut aria-hidden="true" size={15} />
+          </button>
+        </form>
       </div>
-    </>
+    </header>
   );
 }
 
@@ -137,9 +96,7 @@ export function AppShell({ children, user }: { children: ReactNode; user: Authen
       </a>
       <div aria-live="polite" aria-atomic="true" className="sr-only" id="live-announcer"></div>
 
-      <aside className="shell-sidebar fixed inset-y-0 left-0 z-[var(--z-sidebar)] hidden w-[var(--sidebar-width)] flex-col border-r border-border md:flex">
-        <NavigationContent pathname={pathname} user={user} />
-      </aside>
+      <SiteHeader pathname={pathname} user={user} />
 
       {menuOpen ? (
         <div className="fixed inset-0 z-[var(--z-modal)] md:hidden" role="presentation">
@@ -162,6 +119,10 @@ export function AppShell({ children, user }: { children: ReactNode; user: Authen
 
       <main id="hoofdinhoud" tabIndex={-1} aria-label="Hoofdinhoud" className="app-main min-h-screen focus:outline-none">
         <div className="page-content">{children}</div>
+        <footer className="site-footer">
+          <span>Huishouden · privé huishoudboekje</span>
+          <span>Ingelogd als {user.name}</span>
+        </footer>
       </main>
 
       <nav aria-label="Mobiele hoofdnavigatie" className="shell-bottom-nav fixed inset-x-3 bottom-2 z-[var(--z-mobile-nav)] grid h-[calc(var(--mobile-nav-height)+env(safe-area-inset-bottom,0px))] grid-cols-4 rounded-[1.45rem] px-1 pb-[env(safe-area-inset-bottom,0px)] md:hidden">

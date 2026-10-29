@@ -41,14 +41,15 @@ export function BalanceHistoryChart({ rows, accountId }: { rows: BalanceChartRow
         description: "Maandelijks saldo, inkomsten en uitgaven voor deze rekening.",
       },
       animationDuration: 420,
-      color: [theme.success, theme.accent, theme.primary],
+      color: [theme.series[2], theme.series[3], theme.series[0]],
       grid: { left: 16, right: 20, top: 54, bottom: 18, containLabel: true },
       legend: {
         top: 4,
         left: 4,
-        itemWidth: 10,
-        itemHeight: 10,
-        textStyle: { color: theme.muted, fontFamily: "Instrument Sans", fontSize: 11 },
+        itemWidth: 14,
+        itemHeight: 2,
+        icon: "rect",
+        textStyle: { color: theme.muted, fontFamily: "Montserrat", fontSize: 11 },
       },
       tooltip: {
         trigger: "axis",
@@ -56,27 +57,28 @@ export function BalanceHistoryChart({ rows, accountId }: { rows: BalanceChartRow
         borderColor: theme.border,
         borderWidth: 1,
         padding: 12,
-        textStyle: { color: theme.text, fontFamily: "Instrument Sans" },
+        textStyle: { color: theme.text, fontFamily: "Montserrat" },
         valueFormatter: (value) => formatCurrency(Number(value)),
       },
       xAxis: {
         type: "category",
         data: rows.map((row) => formatShortMonth(row.month)),
-        axisLine: { lineStyle: { color: theme.border } },
+        axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: theme.muted, fontFamily: "Instrument Sans", fontSize: 11 },
+        axisLabel: { color: theme.muted, fontFamily: "Montserrat", fontSize: 10 },
       },
       yAxis: [
         {
           type: "value",
-          splitLine: { lineStyle: { color: theme.subtle, type: "dashed" } },
-          axisLabel: { color: theme.muted, formatter: compactCurrency, fontFamily: "Instrument Sans", fontSize: 10 },
+          axisLine: { show: false },
+          splitLine: { lineStyle: { color: theme.grid } },
+          axisLabel: { color: theme.muted, formatter: compactCurrency, fontFamily: "Montserrat", fontSize: 10 },
         },
         {
           type: "value",
           splitLine: { show: false },
           axisLine: { show: false },
-          axisLabel: { color: theme.primary, formatter: compactCurrency, fontFamily: "Instrument Sans", fontSize: 10 },
+          axisLabel: { color: theme.muted, formatter: compactCurrency, fontFamily: "Montserrat", fontSize: 10 },
         },
       ],
       series: [
@@ -85,14 +87,14 @@ export function BalanceHistoryChart({ rows, accountId }: { rows: BalanceChartRow
           type: "bar",
           data: rows.map((row) => row.income),
           barMaxWidth: 18,
-          itemStyle: { borderRadius: [5, 5, 0, 0], opacity: 0.72 },
+          itemStyle: { borderRadius: 0 },
         },
         {
           name: "Uitgaven",
           type: "bar",
           data: rows.map((row) => row.expenses),
           barMaxWidth: 18,
-          itemStyle: { borderRadius: [5, 5, 0, 0], opacity: 0.65 },
+          itemStyle: { borderRadius: 0 },
         },
         {
           name: "Saldo",
@@ -100,16 +102,16 @@ export function BalanceHistoryChart({ rows, accountId }: { rows: BalanceChartRow
           yAxisIndex: 1,
           data: rows.map((row) => ({
             value: row.estimatedBalance,
-            symbolSize: row.observationSource ? 11 : 7,
-            itemStyle: row.observationSource ? { borderColor: theme.panel, borderWidth: 3 } : { borderColor: theme.panel, borderWidth: 2 },
+            symbolSize: row.observationSource ? 7 : 4,
+            itemStyle: row.observationSource ? { color: theme.panel, borderColor: theme.series[0], borderWidth: 1.5 } : { color: theme.series[0], borderWidth: 0 },
           })),
           symbol: "circle",
-          symbolSize: 7,
+          symbolSize: 4,
           showSymbol: rows.length <= 12,
           smooth: 0.28,
-          lineStyle: { width: 3 },
-          itemStyle: { borderColor: theme.panel, borderWidth: 2 },
-          areaStyle: { color: withAlpha(theme.primary, 0.12) },
+          lineStyle: { width: 2 },
+          itemStyle: { color: theme.series[0], borderWidth: 0 },
+          areaStyle: { color: withAlpha(theme.series[0], 0.06) },
         },
       ],
       };
@@ -130,7 +132,7 @@ export function BalanceHistoryChart({ rows, accountId }: { rows: BalanceChartRow
   }, [rows]);
 
   if (!rows.length) {
-    return <div className="grid min-h-72 place-items-center rounded-2xl bg-[var(--color-surface)] text-sm text-[var(--color-text-muted)]">Nog geen saldodata voor deze rekening.</div>;
+    return <div className="grid min-h-72 place-items-center border border-dashed border-border text-sm text-[var(--color-text-muted)]">Nog geen saldodata voor deze rekening.</div>;
   }
 
   return (

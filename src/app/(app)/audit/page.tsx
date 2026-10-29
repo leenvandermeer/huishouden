@@ -7,6 +7,10 @@ import { getAuditLog } from "@/modules/finance/repository";
 export default async function AuditPage() {
   await requireMutableUser();
   const entries = await getAuditLog(150);
+  const actorCount = new Set(entries.map((entry) => entry.actorEmail ?? entry.actorName ?? "Systeem")).size;
+  const exportCount = entries.filter((entry) => entry.eventType.startsWith("export.")).length;
+  const restoreCount = entries.filter((entry) => entry.eventType.startsWith("restore.")).length;
+  const latest = entries[0];
 
   return (
     <>
@@ -14,40 +18,49 @@ export default async function AuditPage() {
         eyebrow="Geschiedenis"
         title="Eerdere wijzigingen"
         description="Bekijk wat er is aangepast en door wie."
+        stats={[
+          { label: "Gebeurtenissen", value: entries.length.toLocaleString("nl-NL"), detail: "meest recente" },
+          { label: "Gebruikers", value: actorCount.toLocaleString("nl-NL"), detail: "in dit overzicht" },
+          { label: "Exports en herstel", value: exportCount.toLocaleString("nl-NL"), detail: `${restoreCount} keer hersteld` },
+          { label: "Laatste wijziging", value: latest ? formatDate(latest.createdAt) : "—", detail: latest ? auditActionLabel(latest.eventType) : "nog niets vastgelegd" },
+        ]}
       />
 
-      <section className="rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
-          <h2 className="text-xs font-semibold text-brand">Laatste {entries.length} gebeurtenissen</h2>
+      <section className="mb-12">
+        <div className="section-head">
+          <div>
+            <h2>Laatste {entries.length} gebeurtenissen</h2>
+            <p className="mt-2">Gevoelige velden zoals IBAN en e-mail worden afgeschermd.</p>
+          </div>
           <StatusBadge tone="success"><ShieldCheck aria-hidden="true" size={12} /> Gegevenslog</StatusBadge>
         </div>
         <div className="table-responsive">
-          <table className="w-full min-w-[64rem] border-collapse text-left text-xs">
-            <thead className="border-b border-border bg-[var(--color-surface)] text-[var(--color-text-subtle)]">
+          <table className="w-full min-w-[64rem] border-collapse border-t border-[var(--color-text)] text-left text-xs">
+            <thead className="border-b border-border text-[0.6rem] uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
               <tr>
-                <th className="px-3 py-2">Datum</th>
-                <th className="px-3 py-2">Gebruiker</th>
-                <th className="px-3 py-2">Actie</th>
-                <th className="px-3 py-2">Object</th>
-                <th className="px-3 py-2">Details</th>
+                <th className="px-2 py-3 font-normal">Datum</th>
+                <th className="px-2 py-3 font-normal">Gebruiker</th>
+                <th className="px-2 py-3 font-normal">Actie</th>
+                <th className="px-2 py-3 font-normal">Object</th>
+                <th className="px-2 py-3 font-normal">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {entries.map((entry) => (
                 <tr key={entry.id} className="hover:bg-[var(--color-surface)]">
-                  <td className="px-3 py-2">
+                  <td className="px-2 py-3">
                     <span className="flex items-center gap-1.5">
                       <Clock3 aria-hidden="true" size={13} className="text-[var(--color-text-subtle)]" />
                       {formatDate(entry.createdAt)}
                     </span>
                   </td>
-                  <td className="px-3 py-2">
-                    <strong className="block">{entry.actorName ?? "Systeem"}</strong>
+                  <td className="px-2 py-3">
+                    <strong className="block font-medium text-[var(--color-text)]">{entry.actorName ?? "Systeem"}</strong>
                     {entry.actorEmail ? <span className="text-[var(--color-text-subtle)]">{entry.actorEmail}</span> : null}
                   </td>
-                  <td className="px-3 py-2"><StatusBadge tone="info">{auditActionLabel(entry.eventType)}</StatusBadge></td>
-                  <td className="px-3 py-2">
-                    <strong>{auditObjectLabel(entry.entityType)}</strong>
+                  <td className="px-2 py-3"><StatusBadge tone="info">{auditActionLabel(entry.eventType)}</StatusBadge></td>
+                  <td className="px-2 py-3">
+                    <strong className="font-medium text-[var(--color-text)]">{auditObjectLabel(entry.entityType)}</strong>
                     {entry.entityId ? <span className="ml-1 text-[var(--color-text-subtle)]">{entry.entityId}</span> : null}
                   </td>
                   <td className="max-w-[24rem] truncate px-3 py-2 text-[var(--color-text-muted)]">{formatAuditDetails(entry.details)}</td>

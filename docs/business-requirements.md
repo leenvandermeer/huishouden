@@ -142,6 +142,16 @@ Rechtstreekse bankkoppelingen, automatische aankoop-terugbetalingskoppeling, uit
 | BR93 | Gebruikersgegevens, rekeningnummers, wachtwoorden en sleutels worden niet als persoonlijke standaardwaarden in broncode, documentatie of voorbeelden opgenomen. |
 | BR94 | Een release is getest en naar Git gepusht voordat productie exact die commit ophaalt; terugzetten van applicatiecode blijft mogelijk. |
 
+## Interface
+
+| ID | Requirement |
+| --- | --- |
+| BR95 | De interface volgt één huisstijl, gelijk aan de Oceanco-toepassingen: een bovenbalk met hoofdnavigatie, een titelband per pagina en rustige secties. De regels staan in [ontwerp en huisstijl](ontwerp-en-huisstijl.md). |
+| BR96 | Iedere pagina toont haar kerncijfers één keer, in de titelband; dezelfde cijfers worden niet nogmaals in losse kaarten herhaald. |
+| BR97 | De interface heeft een licht en een donker thema en volgt desgewenst de systeeminstelling; alle schermen en grafieken zijn in beide thema's leesbaar, ook op een telefoon. |
+| BR98 | Statuskleuren zijn voorbehouden aan een toestand, zoals tekort of op koers, en worden altijd met tekst of label gecombineerd. Grafieken tonen bedragen plat en onvervormd. |
+| BR99 | Lettertypen en afbeeldingen worden door de toepassing zelf geleverd; de interface laadt geen externe bronnen. |
+
 ## Businessregels
 
 - PostgreSQL en aangeleverde transacties vormen de financiële bron. Ontbrekende gegevens worden niet vervangen door verzonnen bedragen.
@@ -165,6 +175,7 @@ Rechtstreekse bankkoppelingen, automatische aankoop-terugbetalingskoppeling, uit
 | Financiële uitkomsten | [Financieel rekencontract](financieel-rekencontract-v1.md) | Contract- en prognosetests |
 | Export en herstel | [CSV-contract](csv-productcontract-v1.md), [back-up en herstel](back-up-en-herstel.md) | CSV- en integriteitstests |
 | Toegang en configuratie | [Veiligheid en privacy](veiligheid-en-privacy.md) | Configuratietests en productievalidatie |
+| Interface | [Ontwerp en huisstijl](ontwerp-en-huisstijl.md) | Typecontrole, lint en schermcontrole in licht, donker en mobiel |
 | Release | [Installatie en beheer](installatie-en-beheer.md) | `npm run release:check` en live validatie |
 
 Een geslaagde geautomatiseerde controle bewijst uitsluitend het gedrag dat die controle afdekt. Ervaringen in de interface en herstelprocedures moeten ook in een eigen testomgeving worden beoordeeld.

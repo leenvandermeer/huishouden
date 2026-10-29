@@ -14,7 +14,7 @@ export function PeriodPager({ label, previousHref, nextHref, previousLabel = "Vo
   return (
     <nav className={`flex flex-wrap items-center gap-1.5 ${className}`} aria-label="Periode navigatie">
       <PagerButton href={previousHref} label={previousLabel} direction="previous" />
-      <span className="grid min-h-11 min-w-[9rem] place-items-center rounded-[var(--radius-md)] border border-border bg-white px-3 py-1.5 text-center text-sm font-semibold text-brand shadow-[var(--shadow-sm)] sm:min-h-8 sm:text-xs">
+      <span className="grid min-h-11 min-w-[9rem] place-items-center border border-border px-3 py-1.5 text-center text-[0.66rem] uppercase tracking-[0.18em] text-[var(--color-text)] sm:min-h-8">
         {label}
       </span>
       <PagerButton href={nextHref} label={nextLabel} direction="next" />
@@ -24,7 +24,7 @@ export function PeriodPager({ label, previousHref, nextHref, previousLabel = "Vo
 
 function PagerButton({ href, label, direction }: { href?: string; label: string; direction: "previous" | "next" }) {
   const icon = direction === "previous" ? <ArrowLeft aria-hidden="true" size={14} /> : <ArrowRight aria-hidden="true" size={14} />;
-  const className = "inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-md)] border border-border bg-white px-2 text-xs font-semibold text-brand shadow-[var(--shadow-sm)] transition hover:border-brand hover:bg-[var(--color-brand-subtle)] sm:min-h-8 sm:min-w-8";
+  const className = "inline-flex min-h-11 min-w-11 items-center justify-center border border-border px-2 text-[var(--color-text)] transition-colors hover:bg-brand hover:text-[var(--color-on-brand)] sm:min-h-8 sm:min-w-8";
   if (!href) {
     return (
       <span className={`${className} opacity-45`} aria-disabled="true" title={label}>

@@ -2,6 +2,8 @@
 
 ## Beginnen
 
+De hoofdnavigatie staat bovenin: Vandaag, Vermogen, Planning, Budgetten, Vaste lasten, Rapporten, Transacties en Instellingen. Rechtsboven kies je een licht of donker thema, of laat je het thema de systeeminstelling volgen. Op een telefoon staat de navigatie onderaan; onder Meer vind je de overige onderdelen. Iedere pagina toont haar belangrijkste cijfers bovenaan.
+
 Voeg je eigen rekeningen toe of laat ze herkennen bij de eerste bankimport. Kies per rekening het juiste type: betaalrekening, spaarrekening, belegging of schuld. Controleer de bankstand en de datum waarop die geldt.
 
 Een bankbestand bevat vaak maar een deel van de historie. Een bekende bankstand vormt daarom een afzonderlijk anker voor het saldo. Het handmatig corrigeren van de bankstand maakt geen inkomsten- of uitgaventransactie aan.

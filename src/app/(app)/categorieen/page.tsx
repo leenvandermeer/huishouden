@@ -9,6 +9,8 @@ export default async function CategoriesPage() {
   const canMutate = user.role !== "readonly";
   const activeCategories = categories.filter((category) => !category.validTo);
   const parentOptions = activeCategories.filter((category) => !category.parent);
+  const subCategoryCount = activeCategories.length - parentOptions.length;
+  const archivedCount = categories.length - activeCategories.length;
 
   return (
     <>
@@ -17,14 +19,20 @@ export default async function CategoriesPage() {
         title="Categorieën"
         description={canMutate ? "Maak duidelijke groepen voor je inkomsten en uitgaven." : "Je kunt de categorieën bekijken, maar niet aanpassen."}
         actions={<ButtonLink href="/mappingregels" variant="secondary">Automatisch indelen</ButtonLink>}
+        stats={[
+          { label: "Actieve categorieën", value: activeCategories.length.toLocaleString("nl-NL"), detail: "in gebruik" },
+          { label: "Hoofdgroepen", value: parentOptions.length.toLocaleString("nl-NL"), detail: "bovenste niveau" },
+          { label: "Subcategorieën", value: subCategoryCount.toLocaleString("nl-NL"), detail: "onder een hoofdgroep" },
+          { label: "Gearchiveerd", value: archivedCount.toLocaleString("nl-NL"), detail: "niet meer actief" },
+        ]}
       />
-      {!canMutate ? <div className="mb-3"><ReadonlyNotice /></div> : null}
+      {!canMutate ? <div className="mb-8"><ReadonlyNotice /></div> : null}
 
-      <section className="mb-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(24rem,0.8fr)]">
+      <section className="mb-12 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.6fr)]">
         {canMutate ? (
-        <form action={saveCategory} className="rounded-[var(--radius-lg)] border border-border bg-white p-3 shadow-[var(--shadow-sm)]">
-          <h2 className="text-sm font-semibold text-brand">Categorie aanmaken</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto] md:items-end">
+        <form action={saveCategory} className="border border-border bg-[var(--color-panel-strong)] p-5 md:p-6">
+          <h2 className={CARD_LABEL}>Categorie aanmaken</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_12rem_auto] md:items-end">
             <div>
               <FieldLabel htmlFor="name">Categorie</FieldLabel>
               <Input id="name" name="name" placeholder="Kinderopvang" />
@@ -51,23 +59,22 @@ export default async function CategoriesPage() {
         </form>
         ) : null}
 
-        <section className="rounded-[var(--radius-lg)] border border-border bg-[var(--color-surface)] p-3">
-          <h2 className="text-sm font-semibold text-brand">Handige indeling</h2>
-          <div className="mt-2 grid gap-2 text-xs text-[var(--color-text-muted)]">
-            <p className="rounded-md bg-white p-2">Gebruik herkenbare groepen, zoals Wonen, Boodschappen, Vervoer en Inkomsten.</p>
-          </div>
+        <section className="border border-border bg-[var(--color-surface)] p-5 md:p-6">
+          <h2 className={CARD_LABEL}>Handige indeling</h2>
+          <p className="mt-4 font-[family-name:var(--font-serif-house)] text-[0.95rem] leading-7 text-[var(--color-text-muted)]">Gebruik herkenbare groepen, zoals Wonen, Boodschappen, Vervoer en Inkomsten.</p>
         </section>
       </section>
 
-      <section className="rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-          <div className="border-b border-border px-3 py-2">
-            <h2 className="text-xs font-semibold text-brand">Categoriebeheer</h2>
+      <section className="mb-12">
+          <div className="section-head">
+            <h2>Categoriebeheer</h2>
+            <p>Hernoem, verplaats of archiveer de groepen waarin je betalingen vallen.</p>
           </div>
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border border-y border-border border-t-[var(--color-text)]">
             {categories.map((category) => (
-              <article key={category.id} className="grid gap-2 p-3">
+              <article key={category.id} className="grid gap-3 px-1 py-5">
                 {canMutate ? (
-                <form action={saveCategory} className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_11rem_auto] lg:items-end">
+                <form action={saveCategory} className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_11rem_auto] lg:items-end">
                   <input type="hidden" name="categoryId" value={category.id} />
                   <div>
                     <FieldLabel htmlFor={`name-${category.id}`}>Naam</FieldLabel>
@@ -106,7 +113,7 @@ export default async function CategoriesPage() {
                     <StatusBadge tone={category.kind === "inkomen" ? "success" : category.kind === "interne_overboeking" ? "info" : category.kind === "vaste_last" ? "warning" : "neutral"}>
                       {category.kind.replaceAll("_", " ")}
                     </StatusBadge>
-                    <span className="text-[0.7rem] text-[var(--color-text-subtle)]">{category.parent ? `Onder ${category.parent}` : "Hoofdcategorie"}</span>
+                    <span className="text-xs text-[var(--color-text-subtle)]">{category.parent ? `Onder ${category.parent}` : "Hoofdcategorie"}</span>
                     {category.validTo ? <StatusBadge tone="error">Gearchiveerd</StatusBadge> : null}
                   </div>
                   {canMutate ? <CategoryDeleteButton category={category} /> : null}
@@ -147,9 +154,11 @@ function CategoryDeleteButton({ category }: { category: { id: string; validTo?: 
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-[var(--color-surface)] p-2 text-xs">
-      <dt className="text-[var(--color-text-subtle)]">{label}</dt>
-      <dd className="mt-1 font-semibold text-[var(--color-text)]">{value}</dd>
+    <div className="border-l border-border py-1 pl-3 text-sm">
+      <dt className="text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">{label}</dt>
+      <dd className="mt-1 text-[var(--color-text)]">{value}</dd>
     </div>
   );
 }
+
+const CARD_LABEL = "text-[0.62rem] font-normal uppercase tracking-[0.22em] text-[var(--color-text-muted)]";

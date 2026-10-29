@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AlertCircle, ArrowDown, ArrowRight, ArrowUp, Download, Lightbulb, ShieldCheck } from "lucide-react";
 import { MoneyRunway } from "@/components/finance/money-runway";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
-import { StatusBadge } from "@/components/ui";
+import { StatsStrip, StatusBadge } from "@/components/ui";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { getDashboardSummaryFromDatabase, type DashboardCashflowForecast } from "@/modules/finance/repository";
 import { getBudgets, getFinanceDataset } from "@/modules/finance/data-source";
@@ -27,32 +27,36 @@ export default async function DashboardPage() {
       {forecast.state === "setup" ? <ProductSignal eventType="source.missing_income" /> : null}
       {forecast.state !== "planned" && forecast.state !== "setup" ? <ProductSignal eventType="source.estimated" /> : null}
       <header className="today-titlebar">
-        <div>
-          <p>{formatToday()}</p>
-          <h1>Vandaag</h1>
-          <span>Dit is hoe je geld er vandaag voor staat.</span>
+        <div className="band-row">
+          <div>
+            <p>{formatToday()}</p>
+            <h1>Vandaag</h1>
+            <span>Dit is hoe je geld er vandaag voor staat.</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <PrivacyToggle />
+            <ForecastBadge state={forecast.state} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <PrivacyToggle />
-          <ForecastBadge state={forecast.state} />
-        </div>
+        <StatsStrip
+          items={[
+            { label: "Veilig te besteden", value: formatCurrency(forecast.availableToSpend), detail: `tot ${horizon}`, lead: true, tone: availableIsPositive ? undefined : "risk" },
+            { label: "Per dag", value: forecast.dailyAmount != null ? formatCurrency(forecast.dailyAmount) : "—", detail: forecast.daysUntilIncome != null ? `${forecast.daysUntilIncome} ${forecast.daysUntilIncome === 1 ? "dag" : "dagen"} tot inkomen` : "geen inkomen gepland" },
+            { label: "Verwachte uitgaven", value: formatCurrency(forecast.expectedBudgetExpenses), detail: "tot inkomen" },
+            ...(forecast.nextIncome ? [{ label: "Volgend inkomen", value: `+${formatCurrency(forecast.nextIncome.amount)}`, detail: formatCompactDate(forecast.nextIncome.date) }] : []),
+          ]}
+        />
       </header>
 
-      <section className={`runway-stage ${availableIsPositive ? "runway-stage--safe" : "runway-stage--risk"}`}>
-        <div className="runway-stage__intro">
-          <span className="runway-kicker"><ShieldCheck aria-hidden="true" size={17} /> Veilig te besteden tot {horizon}</span>
-          <strong className="money-value">{formatCurrency(forecast.availableToSpend)}</strong>
+      <section className={`runway-stage ${availableIsPositive ? "runway-stage--safe" : "runway-stage--risk"}`} aria-labelledby="runway-title">
+        <div className="section-head">
+          <h2 id="runway-title">Geldroute</h2>
           <p>
-            Na {expenses.length} betaling{expenses.length === 1 ? "" : "en"}
+            Na {expenses.length} betaling{expenses.length === 1 ? "" : "en"} tot {horizon}
             {forecast.daysUntilIncome != null ? `. Volgend inkomen over ${forecast.daysUntilIncome} ${forecast.daysUntilIncome === 1 ? "dag" : "dagen"}.` : "."}
           </p>
         </div>
         <MoneyRunway forecast={forecast} />
-        <div className="runway-stage__footer">
-          <span><small>Per dag</small><strong className="money-value">{forecast.dailyAmount != null ? formatCurrency(forecast.dailyAmount) : "—"}</strong></span>
-          <span><small>Verwachte uitgaven tot inkomen</small><strong className="money-value">{formatCurrency(forecast.expectedBudgetExpenses)}</strong></span>
-          {forecast.nextIncome ? <span><small>Volgend inkomen</small><strong className="money-value">+{formatCurrency(forecast.nextIncome.amount)}</strong></span> : null}
-        </div>
       </section>
 
       <div className={`today-observation today-observation--${insight.tone}`}>

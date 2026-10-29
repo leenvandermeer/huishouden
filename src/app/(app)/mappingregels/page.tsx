@@ -24,14 +24,19 @@ export default async function MappingRulesPage() {
         title="Herkenningsregels"
         description={canMutate ? "Laat betalingen van dezelfde winkel automatisch in de juiste categorie komen." : "Je kunt de regels bekijken, maar niet aanpassen."}
         actions={<ButtonLink href="/categorieen" variant="secondary">Categorieën</ButtonLink>}
+        stats={[
+          { label: "Actieve regels", value: activeRules.length.toLocaleString("nl-NL"), detail: "worden toegepast" },
+          { label: "Doelcategorieën", value: ruleCategories.length.toLocaleString("nl-NL"), detail: "beschikbaar" },
+          { label: "Transacties", value: transactionCount.toLocaleString("nl-NL"), detail: "opgeslagen" },
+        ]}
       />
-      {!canMutate ? <div className="mb-3"><ReadonlyNotice /></div> : null}
+      {!canMutate ? <div className="mb-8"><ReadonlyNotice /></div> : null}
 
-      <section className="mb-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.65fr)]">
+      <section className="mb-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,0.6fr)]">
         {canMutate ? (
-        <form action={saveRule} className="rounded-[var(--radius-lg)] border border-border bg-white p-3 shadow-[var(--shadow-sm)]">
-          <h2 className="text-sm font-semibold text-brand">Nieuwe herkenningsregel</h2>
-          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)_auto] sm:items-end">
+        <form action={saveRule} className="border border-border bg-[var(--color-panel-strong)] p-5 md:p-6">
+          <h2 className={CARD_LABEL}>Nieuwe herkenningsregel</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)_auto] sm:items-end">
             <div>
               <FieldLabel htmlFor="pattern">Herkenning</FieldLabel>
               <Input id="pattern" name="pattern" placeholder="Albert Heijn" required />
@@ -65,23 +70,21 @@ export default async function MappingRulesPage() {
         </form>
         ) : null}
 
-        <section className="rounded-[var(--radius-lg)] border border-border bg-[var(--color-surface)] p-3">
-          <h2 className="text-sm font-semibold text-brand">Hoe werkt dit?</h2>
-          <div className="mt-2 grid gap-2 text-xs text-[var(--color-text-muted)]">
-            <p className="rounded-md bg-white p-2">Een regel herkent tekst op je bankafschrift en kiest daarna automatisch een categorie.</p>
-          </div>
+        <section className="border border-border bg-[var(--color-surface)] p-5 md:p-6">
+          <h2 className={CARD_LABEL}>Hoe werkt dit?</h2>
+          <p className="mt-4 font-[family-name:var(--font-serif-house)] text-[0.95rem] leading-7 text-[var(--color-text-muted)]">Een regel herkent tekst op je bankafschrift en kiest daarna automatisch een categorie.</p>
         </section>
       </section>
 
       {canMutate ? (
-      <section className="mb-3">
-        <details className="rounded-[var(--radius-lg)] border border-border bg-white p-3 shadow-[var(--shadow-sm)]">
-          <summary className="cursor-pointer text-sm font-semibold text-brand">Bestaande transacties bijwerken</summary>
-          <form action={applyRules} className="mt-3 rounded-md bg-[var(--color-brand-subtle)] p-3">
-          <div className="flex h-full flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-brand">Alle regels opnieuw toepassen</h2>
-              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+      <section className="mb-12">
+        <details className="border border-border bg-[var(--color-panel-strong)] p-5 md:p-6">
+          <summary className="cursor-pointer text-[0.66rem] uppercase tracking-[0.2em] text-[var(--color-text)]">Bestaande transacties bijwerken</summary>
+          <form action={applyRules} className="mt-4 border-t border-border pt-4">
+          <div className="flex h-full flex-wrap items-center justify-between gap-4">
+            <div className="max-w-2xl">
+              <h2 className="text-sm font-medium text-[var(--color-text)]">Alle regels opnieuw toepassen</h2>
+              <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
                 Alleen nodig nadat je regels hebt aangepast en bestaande transacties opnieuw wilt indelen. Nieuwe imports passen actieve regels automatisch toe. Actief: {activeRules.length} regels, transacties: {transactionCount}.
               </p>
             </div>
@@ -94,17 +97,20 @@ export default async function MappingRulesPage() {
       </section>
       ) : null}
 
-      <section className="rounded-[var(--radius-lg)] border border-border bg-white shadow-[var(--shadow-sm)]">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
-          <h2 className="text-sm font-semibold text-brand">Alle herkenningsregels</h2>
+      <section className="mb-12">
+        <div className="section-head">
+          <div>
+            <h2>Alle herkenningsregels</h2>
+            <p className="mt-2">Pas aan waar een regel op let en in welke categorie de betaling terechtkomt.</p>
+          </div>
           <StatusBadge tone="info">{activeRules.length} actief</StatusBadge>
         </div>
-        <div className="divide-y divide-border">
+        <div className="divide-y divide-border border-y border-border border-t-[var(--color-text)]">
           {activeRules.length ? (
             activeRules.map((rule) => (
-              <article key={rule.id} className="grid gap-2 p-3">
+              <article key={rule.id} className="grid gap-3 px-1 py-5">
                 {canMutate ? (
-                <form action={saveRule} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)_auto] sm:items-end">
+                <form action={saveRule} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_minmax(0,1fr)_auto] sm:items-end">
                   <input type="hidden" name="ruleId" value={rule.id} />
                   <div>
                     <FieldLabel htmlFor={`pattern-${rule.id}`}>Herkenning</FieldLabel>
@@ -144,7 +150,7 @@ export default async function MappingRulesPage() {
                   </div>
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2 text-[0.7rem] text-[var(--color-text-subtle)]">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-subtle)]">
                     <StatusBadge tone={rule.active ? "success" : "neutral"}>{rule.active ? "Actief" : "Uit"}</StatusBadge>
                     <span>{getScopeLabel(rule.matchScope)}</span>
                     <span>{getCategoryLabel(categories, rule.categoryId)}</span>
@@ -154,7 +160,7 @@ export default async function MappingRulesPage() {
               </article>
             ))
           ) : (
-            <p className="p-3 text-xs text-[var(--color-text-muted)]">Nog geen regels. Maak bijvoorbeeld: Albert Heijn hoort bij Boodschappen.</p>
+            <p className="px-1 py-6 text-sm text-[var(--color-text-muted)]">Nog geen regels. Maak bijvoorbeeld: Albert Heijn hoort bij Boodschappen.</p>
           )}
         </div>
       </section>
@@ -192,9 +198,11 @@ function getScopeLabel(scope: string) {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-[var(--color-surface)] p-2 text-xs">
-      <dt className="text-[var(--color-text-subtle)]">{label}</dt>
-      <dd className="mt-1 font-semibold text-[var(--color-text)]">{value}</dd>
+    <div className="border-l border-border py-1 pl-3 text-sm">
+      <dt className="text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">{label}</dt>
+      <dd className="mt-1 text-[var(--color-text)]">{value}</dd>
     </div>
   );
 }
+
+const CARD_LABEL = "text-[0.62rem] font-normal uppercase tracking-[0.22em] text-[var(--color-text-muted)]";

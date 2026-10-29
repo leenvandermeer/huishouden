@@ -174,13 +174,9 @@ export function TransactionFilterForm({ accounts, categories, counterAccounts, f
           <FieldLabel htmlFor="maxAmount">Max. bedrag</FieldLabel>
           <Input id="maxAmount" name="maxAmount" defaultValue={filters.maxAmount != null ? String(filters.maxAmount).replace(".", ",") : ""} inputMode="decimal" placeholder="500,00" />
         </div>
-          <div className="grid gap-2 sm:grid-cols-5">
-            <SummaryPill label="Gevonden" value={String(result.total)} muted={isPending ? "Filteren..." : `${result.pageSize} per pagina`} />
-            <SummaryPill label="Inkomsten" value={formatCurrency(result.totals.income)} />
-            <SummaryPill label="Uitgaven" value={formatCurrency(result.totals.expenses)} />
-          <SummaryPill label="Beleggingen" value={formatCurrency(result.totals.investments)} />
-          <SummaryPill label="Overboekingen" value={formatCurrency(result.totals.internal)} />
-        </div>
+        <p aria-live="polite" className="self-end pb-2 text-[0.62rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">
+          {isPending ? "Filteren…" : `${result.pageSize} per pagina`}
+        </p>
       </div>
       <div className="advanced-filter-grid mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[12rem_12rem_12rem_10rem_minmax(0,1fr)] xl:items-end">
         <div>
@@ -250,16 +246,6 @@ export function TransactionFilterForm({ accounts, categories, counterAccounts, f
         </div>
       ) : null}
     </form>
-  );
-}
-
-function SummaryPill({ label, value, muted }: { label: string; value: string; muted?: string }) {
-  return (
-    <div className="rounded-md border border-border bg-white/72 px-2.5 py-2 shadow-[0_8px_24px_rgb(19_58_99_/_0.05)]">
-      <p className="text-[0.62rem] font-bold uppercase tracking-wide text-[var(--color-text-subtle)]">{label}</p>
-      <p className="mt-0.5 truncate text-xs font-semibold text-brand">{value}</p>
-      {muted ? <p className="mt-0.5 text-[0.65rem] text-[var(--color-text-subtle)]">{muted}</p> : null}
-    </div>
   );
 }
 

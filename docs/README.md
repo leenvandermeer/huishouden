@@ -8,6 +8,7 @@ Huishouden helpt één huishouden inkomsten, uitgaven, budgetten en vermogen bij
 | [Business requirements](business-requirements.md) | Productafspraken, businessregels en uitbreidingswensen |
 | [Installatie en beheer](installatie-en-beheer.md) | Lokale inrichting, configuratie, Git-deploy en rollback |
 | [Architectuur](architecture.md) | Applicatielagen, gegevensmodel en verwerkingsstromen |
+| [Ontwerp en huisstijl](ontwerp-en-huisstijl.md) | Huisstijl, paginaopbouw, kleuren, grafieken en regels voor nieuwe schermen |
 | [Veiligheid en privacy](veiligheid-en-privacy.md) | Toegangsrechten, geheimen en openbare publicatie |
 | [Back-up en herstel](back-up-en-herstel.md) | Gegevens bewaren, controleren en herstellen |
 | [Financieel rekencontract](financieel-rekencontract-v1.md) | Definities, formules, afronding en fictieve rekenvoorbeelden |

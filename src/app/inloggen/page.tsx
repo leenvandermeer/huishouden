@@ -11,7 +11,11 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
   const twoFactorPending = Boolean(readPendingTwoFactorToken(pendingToken));
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[var(--color-bg)] p-4">
+    <main className="auth-screen grid min-h-screen place-items-center bg-[var(--color-bg)] p-4">
+      <div className="auth-editorial" aria-hidden="true">
+        <span>Huishouden</span>
+        <p>Rust in je geldzaken, elke dag opnieuw.</p>
+      </div>
       <section className="w-full max-w-sm rounded-[var(--radius-lg)] border border-border bg-white p-5 shadow-[var(--shadow-sm)]">
         <div className="mb-6 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-md bg-brand text-white">

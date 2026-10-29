@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import "@fontsource-variable/instrument-sans";
+import "@fontsource/montserrat/200.css";
+import "@fontsource/montserrat/300.css";
+import "@fontsource/montserrat/400.css";
+import "@fontsource/montserrat/500.css";
+import "@fontsource/montserrat/600.css";
 import "./globals.css";
+import "./house-style.css";
 
 export const metadata: Metadata = {
   title: "Huishouden",
@@ -15,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f5f7fc",
+  themeColor: "#0e1114",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
