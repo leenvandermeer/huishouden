@@ -44,7 +44,7 @@ De app kan ook volledig in Docker draaien, met automatisch herladen bij wijzigin
 docker compose --env-file .env.local --profile dev up -d dev
 ```
 
-De ontwikkelomgeving is beschikbaar op `http://localhost:3020`. Een andere poort stel je in met `DEV_HOST_PORT`. De container gebruikt dezelfde lokale database als `scripts/dev.sh`. Na het toevoegen van een npm-pakket installeer je dat ook in de container, met `docker exec huishouden-dev npm install`. Stoppen gaat met `docker compose --env-file .env.local --profile dev stop dev`.
+De ontwikkelomgeving is beschikbaar op `http://localhost:3020`. Een andere poort stel je in met `DEV_HOST_PORT`. De container gebruikt een aparte database `huishouden_demo` met fictieve gegevens (rekeningen, ruim een jaar transacties, budgetten en vaste lasten), zodat er geen echte saldi zichtbaar zijn. Die wordt bij de eerste start automatisch gevuld; inloggen gaat met `demo@huishouden.test` / `demo-huishouden`. Opnieuw vullen kan met `docker exec huishouden-dev npm run db:demo`. Het script weigert iedere database waarvan de naam niet op `_demo` eindigt. Een andere database kies je met `DEV_DATABASE_NAME`. Na het toevoegen van een npm-pakket installeer je dat ook in de container, met `docker exec huishouden-dev npm install`. Stoppen gaat met `docker compose --env-file .env.local --profile dev stop dev`.
 
 ## Optionele instellingen
 

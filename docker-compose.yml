@@ -45,10 +45,11 @@ services:
       context: .
       target: dependencies
     container_name: huishouden-dev
-    command: ["npx", "next", "dev", "--hostname", "0.0.0.0", "--port", "3000"]
+    # Uses a separate demo database with fictional data, filled on first start (scripts/seed-demo.ts).
+    command: ["sh", "-c", "npm run db:demo -- --if-empty && exec npx next dev --hostname 0.0.0.0 --port 3000"]
     working_dir: /app
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/huishouden
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${DEV_DATABASE_NAME:-huishouden_demo}
       APP_URL: http://localhost:${DEV_HOST_PORT:-3020}
       RABOBANK_SAVINGS_IBANS: ${RABOBANK_SAVINGS_IBANS:-}
       TOTP_PENDING_SECRET: ${TOTP_PENDING_SECRET:-}
